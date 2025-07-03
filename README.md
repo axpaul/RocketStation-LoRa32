@@ -34,7 +34,7 @@ Le projet utilise les bibliothèques suivantes :
 
 ## Format des trames
 
-- Taille fixe de 33 octets par trame
+- Taille fixe de 36 octets par trame
 - Le dernier octet est un CRC8 (polynôme 0x31)
 - Aucune interprétation du contenu n'est effectuée dans la station
 - Les trames invalides (CRC incorrect) sont ignorées
