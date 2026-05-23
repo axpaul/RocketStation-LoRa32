@@ -33,7 +33,7 @@
 #define BOARD_LED                   25
 #define LED_ON                      HIGH
 
-#define ADC_PIN                     27
+#define BATTERY_PIN                 35
 
 #define MAX_FRAME_SIZE 255
 #define NECTAR_MAGIC 0xEB
@@ -42,6 +42,8 @@
 extern ESP32Time rtc;
 extern char logFileName[32];
 extern char dispStatus[32];
+
+float readBatteryVoltage();
 
 void ScreenText(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2);
 void SDCardDetection(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SPIClass* SDSPI, bool* SDCard);

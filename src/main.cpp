@@ -15,6 +15,7 @@ void setup()
   Wire.begin(I2C_SDA, I2C_SCL);
   pinMode(BOARD_LED, OUTPUT);
   digitalWrite(BOARD_LED, LED_ON);
+  pinMode(BATTERY_PIN, INPUT);
 
   u8g2 = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0, U8X8_PIN_NONE);
   SDSPI = new SPIClass(HSPI);

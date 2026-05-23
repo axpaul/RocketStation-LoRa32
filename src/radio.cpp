@@ -70,17 +70,92 @@ void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio){
 static int dispMode = 0; // 0 = Packet Info, 1 = Network Stats
 static unsigned long lastModeChange = 0;
 
+float readBatteryVoltage() {
+  uint32_t sum = 0;
+  for (int i = 0; i < 8; i++) {
+    sum += analogRead(BATTERY_PIN);
+    delayMicroseconds(10);
+  }
+  float avgAdc = sum / 8.0;
+  // Standard conversion for LilyGO LoRa32 boards using internal ESP32 reference (3.3V)
+  // and division by 2 (100k/100k resistors). A small 1.05 correction factor accounts for typical ADC offsets.
+  float voltage = (avgAdc / 4095.0) * 3.3 * 2.0 * 1.05;
+  return voltage;
+}
+
 void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
   u8g2->clearBuffer();
   u8g2->setFont(u8g2_font_ncenB08_tr);
 
   char buf[64];
+  char timeBuf[16];
   
   // Ligne 1 : Statut et Horloge en temps réel (toujours visible)
   u8g2->drawStr(0, 12, dispStatus);
-  snprintf(buf, sizeof(buf), "%02d:%02d:%02d", rtc.getHour(true), rtc.getMinute(), rtc.getSecond());
-  u8g2->drawStr(75, 12, buf);
   
+  // Real-time clock aligned to the right
+  snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", rtc.getHour(true), rtc.getMinute(), rtc.getSecond());
+  int clockWidth = u8g2->getStrWidth(timeBuf);
+  int clockX = 128 - clockWidth;
+  u8g2->drawStr(clockX, 12, timeBuf);
+
+  // Dynamic battery info display centered in the header
+  float vbat = readBatteryVoltage();
+  char batBuf[16] = "";
+  bool isUsb = (vbat > 4.4);
+  if (isUsb) {
+    strcpy(batBuf, "USB");
+  } else {
+    snprintf(batBuf, sizeof(batBuf), "%.1fV", vbat);
+  }
+
+  int statusWidth = u8g2->getStrWidth(dispStatus);
+  int availableSpace = clockX - statusWidth;
+  int batTextWidth = u8g2->getStrWidth(batBuf);
+  int batWidth = 13 + 4 + batTextWidth; // Icon (13px) + spacing (4px) + text width
+
+  if (availableSpace >= batWidth + 10) {
+    // Show both the battery icon and the voltage / USB text
+    int blockX = statusWidth + (availableSpace - batWidth) / 2;
+    
+    // Draw battery outline & tip
+    u8g2->drawFrame(blockX, 5, 12, 6);
+    u8g2->drawBox(blockX + 12, 7, 1, 2);
+    
+    if (!isUsb) {
+      int pct = (int)((vbat - 3.2) * 100.0);
+      if (pct < 0) pct = 0;
+      if (pct > 100) pct = 100;
+      int fillWidth = (pct * 10) / 100;
+      if (fillWidth > 0) {
+        u8g2->drawBox(blockX + 1, 6, fillWidth, 4);
+      }
+    } else {
+      // Full fill when on USB power
+      u8g2->drawBox(blockX + 1, 6, 10, 4);
+    }
+    
+    // Print battery voltage/USB text
+    u8g2->drawStr(blockX + 13 + 4, 12, batBuf);
+  }
+  else if (availableSpace >= 20) {
+    // Show battery icon only to prevent overlap
+    int blockX = statusWidth + (availableSpace - 13) / 2;
+    u8g2->drawFrame(blockX, 5, 12, 6);
+    u8g2->drawBox(blockX + 12, 7, 1, 2);
+    if (!isUsb) {
+      int pct = (int)((vbat - 3.2) * 100.0);
+      if (pct < 0) pct = 0;
+      if (pct > 100) pct = 100;
+      int fillWidth = (pct * 10) / 100;
+      if (fillWidth > 0) {
+        u8g2->drawBox(blockX + 1, 6, fillWidth, 4);
+      }
+    } else {
+      u8g2->drawBox(blockX + 1, 6, 10, 4);
+    }
+  }
+
   u8g2->drawHLine(0, 15, 128);
 
   // Gérer la rotation des écrans toutes les 4 secondes
