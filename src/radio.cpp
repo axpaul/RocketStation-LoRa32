@@ -12,6 +12,15 @@ float dispRssi = 0.0;
 float dispSnr = 0.0;
 bool dispHasFrame = false;
 
+// Statistiques de performance réseau
+static bool seenTrackers[256] = {false};
+static uint32_t activeTrackersCount = 0;
+static uint32_t bytesReceivedThisSecond = 0;
+static uint32_t dataRateBps = 0;
+static unsigned long lastPacketTime = 0;
+static bool hasReceivedAny = false;
+static unsigned long lastRateCalculation = 0;
+
 void setFlag(void)
 {
     // check if the interrupt is enabled
@@ -58,7 +67,7 @@ void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio){
   }
 }
 
-static int dispMode = 0; // 0 = Packet Info, 1 = Radio Settings
+static int dispMode = 0; // 0 = Packet Info, 1 = Network Stats
 static unsigned long lastModeChange = 0;
 
 void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
@@ -80,6 +89,13 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
     dispMode = (dispMode + 1) % 2;
   }
 
+  // Calcul du débit de données toutes les secondes
+  if (millis() - lastRateCalculation >= 1000) {
+    dataRateBps = bytesReceivedThisSecond;
+    bytesReceivedThisSecond = 0;
+    lastRateCalculation = millis();
+  }
+
   if (dispMode == 0) {
     // Écran 1 : Infos de la dernière trame reçue
     u8g2->drawStr(0, 30, dispSsidApid);
@@ -99,10 +115,20 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
     u8g2->drawStr(0, 58, buf);
   } 
   else {
-    // Écran 2 : Paramètres matériels de la radio
-    u8g2->drawStr(0, 30, "LoRa @ 869.525 MHz");
-    u8g2->drawStr(0, 44, "SF: 8  |  BW: 250 kHz");
-    u8g2->drawStr(0, 58, "TX Power: 17 dBm");
+    // Écran 2 : Statistiques du réseau
+    snprintf(buf, sizeof(buf), "Trackers actifs: %d", activeTrackersCount);
+    u8g2->drawStr(0, 30, buf);
+    
+    snprintf(buf, sizeof(buf), "Debit: %d octets/s", dataRateBps);
+    u8g2->drawStr(0, 44, buf);
+    
+    if (hasReceivedAny) {
+      unsigned long elapsed = (millis() - lastPacketTime) / 1000;
+      snprintf(buf, sizeof(buf), "Dernier RX: %d s", elapsed);
+    } else {
+      snprintf(buf, sizeof(buf), "Dernier RX: aucun");
+    }
+    u8g2->drawStr(0, 58, buf);
   }
 
   u8g2->sendBuffer();
@@ -147,6 +173,12 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
         else if (ssid_type == 3) ssid_prefix = "OTHER";
 
         snprintf(dispSsidApid, sizeof(dispSsidApid), "%s%d (APID:%d)", ssid_prefix, ssid_num, apid);
+        
+        // Enregistrer l'émetteur comme actif
+        if (!seenTrackers[ssid_num]) {
+          seenTrackers[ssid_num] = true;
+          activeTrackersCount++;
+        }
       } else {
         strcpy(dispSsidApid, "Trame invalide (<3B)");
       }
@@ -154,6 +186,11 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
       dispRssi = radio->getRSSI();
       dispSnr = radio->getSNR();
       dispHasFrame = true;
+
+      // Actualiser le débit et le temps de réception
+      bytesReceivedThisSecond += length;
+      lastPacketTime = millis();
+      hasReceivedAny = true;
 
       updateDisplay(u8g2, radio);
 
