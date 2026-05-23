@@ -17,13 +17,11 @@ void ScreenText(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2) {
     do 
     {
       u8g2->setFont(u8g2_font_fur17_tf);
-      u8g2->drawStr(-1, 25, "ROCKET");
-      u8g2->drawHLine(2, 35, 80);
-      u8g2->drawHLine(3, 36, 80);
-      u8g2->drawVLine(45, 32, 12);
-      u8g2->drawVLine(46, 33, 12);
-      u8g2->setFont(u8g2_font_fur17_tf);
-      u8g2->drawStr(58, 60, "LoRa");
+      u8g2->drawStr(12, 26, "NECTAR");
+      u8g2->drawHLine(2, 35, 124);
+      u8g2->drawHLine(2, 36, 124);
+      u8g2->setFont(u8g2_font_fur11_tf);
+      u8g2->drawStr(14, 58, "RX STATION");
     } while (u8g2->nextPage());
     u8g2->sendBuffer();
     u8g2->setFont(u8g2_font_fur11_tf);
