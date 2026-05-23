@@ -21,7 +21,7 @@ void setup()
   SDCard = new bool;
   byteArr = new uint8_t[MAX_FRAME_SIZE];
   *SDCard = false;
-  u8g2->begin();
+  ScreenText(u8g2);
 
   //SD card:
   SDCardDetection(u8g2, SDSPI, SDCard);

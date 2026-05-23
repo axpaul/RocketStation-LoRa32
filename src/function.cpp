@@ -1,5 +1,33 @@
 #include "header.h"
 
+void ScreenText(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2) {
+  Wire.beginTransmission(0x3C);
+
+  if (Wire.endTransmission() == 0) 
+  { 
+    u8g2->begin();
+    u8g2->clearBuffer();
+    u8g2->setFlipMode(0);
+    u8g2->setFontMode(1);
+    u8g2->setDrawColor(1);
+    u8g2->setFontDirection(0);
+    u8g2->firstPage();
+
+    do 
+    {
+      u8g2->setFont(u8g2_font_fur17_tf);
+      u8g2->drawStr(12, 26, "NECTAR");
+      u8g2->drawHLine(2, 35, 124);
+      u8g2->drawHLine(2, 36, 124);
+      u8g2->setFont(u8g2_font_fur11_tf);
+      u8g2->drawStr(14, 58, "RX STATION");
+    } while (u8g2->nextPage());
+    u8g2->sendBuffer();
+    u8g2->setFont(u8g2_font_fur11_tf);
+    delay(3000);
+  }
+}
+
 void SDCardDetection(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SPIClass* SDSPI, bool* SDCard) {
   pinMode(SDCARD_MISO, INPUT_PULLUP);
   SDSPI->begin(SDCARD_SCLK, SDCARD_MISO, SDCARD_MOSI, SDCARD_CS);

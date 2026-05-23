@@ -23,19 +23,12 @@ void setFlag(void)
 
 // initialize SX1276 with default settings
 void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio){
-
-  u8g2->clearBuffer();
-  u8g2->setCursor(0, 16);
-  u8g2->println( "[SX1276] Initializing ...");
-  u8g2->sendBuffer();
-  delay(500);
-
+  Serial.println("[SX1276] Initializing ...");
   rtc.setTime(0, 0, 0, 0, 0, 2023);
  
   int state = radio->begin(FREQUENCY);
 
   if (state == RADIOLIB_ERR_NONE) {
-    
     radio->setOutputPower(17);
     radio->setBandwidth(250);
     radio->setCurrentLimit(120);
@@ -43,25 +36,19 @@ void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio){
     radio->setCRC(true, false);
     radio->setDio0Action(setFlag, RISING);
     state = radio->startReceive();
-
-      do {
-      u8g2->setCursor(0, 32);
-      u8g2->println( "[SX1276] Complete !");
-      u8g2->setCursor(0, 48);
-      u8g2->println( "Waiting to receive data");
-      u8g2->sendBuffer();
-    } while (u8g2->nextPage());
-
-    u8g2->sendBuffer();
-    delay(1000);
-    u8g2->clearBuffer();
-
+    
+    Serial.println("[SX1276] Complete!");
   } 
   else {
-        while (true);
-    }
+    Serial.printf("[SX1276] begin FAILED, code: %d\n", state);
+    u8g2->clearBuffer();
+    u8g2->drawStr(0, 12, "Initializing radio: FAIL!");
+    u8g2->sendBuffer();
+    while (true);
+  }
 
   if (state != RADIOLIB_ERR_NONE) {
+    Serial.printf("[SX1276] startReceive FAILED, code: %d\n", state);
     u8g2->clearBuffer();
     u8g2->drawStr(0, 12, "Initializing radio: FAIL!");
     u8g2->sendBuffer();
