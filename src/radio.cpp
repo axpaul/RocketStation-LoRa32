@@ -56,37 +56,52 @@ void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio){
   }
 }
 
+static int dispMode = 0; // 0 = Packet Info, 1 = Radio Settings
+static unsigned long lastModeChange = 0;
+
 void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
   u8g2->clearBuffer();
   u8g2->setFont(u8g2_font_ncenB08_tr);
 
   char buf[64];
   
-  // Ligne 1 : Statut et Horloge en temps réel
+  // Ligne 1 : Statut et Horloge en temps réel (toujours visible)
   u8g2->drawStr(0, 12, dispStatus);
   snprintf(buf, sizeof(buf), "%02d:%02d:%02d", rtc.getHour(true), rtc.getMinute(), rtc.getSecond());
   u8g2->drawStr(75, 12, buf);
   
   u8g2->drawHLine(0, 15, 128);
 
-  // Ligne 2 : SSID
-  u8g2->drawStr(0, 30, dispSsidApid);
-
-  // Ligne 3 : RSSI
-  if (dispHasFrame) {
-    snprintf(buf, sizeof(buf), "RSSI: %.2f dBm", dispRssi);
-  } else {
-    snprintf(buf, sizeof(buf), "RSSI: -- dBm");
+  // Gérer la rotation des écrans toutes les 4 secondes
+  if (millis() - lastModeChange >= 4000) {
+    lastModeChange = millis();
+    dispMode = (dispMode + 1) % 2;
   }
-  u8g2->drawStr(0, 44, buf);
 
-  // Ligne 4 : SNR
-  if (dispHasFrame) {
-    snprintf(buf, sizeof(buf), "SNR: %.2f dB", dispSnr);
-  } else {
-    snprintf(buf, sizeof(buf), "SNR: -- dB");
+  if (dispMode == 0) {
+    // Écran 1 : Infos de la dernière trame reçue
+    u8g2->drawStr(0, 30, dispSsidApid);
+
+    if (dispHasFrame) {
+      snprintf(buf, sizeof(buf), "RSSI: %.2f dBm", dispRssi);
+    } else {
+      snprintf(buf, sizeof(buf), "RSSI: -- dBm");
+    }
+    u8g2->drawStr(0, 44, buf);
+
+    if (dispHasFrame) {
+      snprintf(buf, sizeof(buf), "SNR: %.2f dB", dispSnr);
+    } else {
+      snprintf(buf, sizeof(buf), "SNR: -- dB");
+    }
+    u8g2->drawStr(0, 58, buf);
+  } 
+  else {
+    // Écran 2 : Paramètres matériels de la radio
+    u8g2->drawStr(0, 30, "LoRa @ 869.525 MHz");
+    u8g2->drawStr(0, 44, "SF: 8  |  BW: 250 kHz");
+    u8g2->drawStr(0, 58, "TX Power: 17 dBm");
   }
-  u8g2->drawStr(0, 58, buf);
 
   u8g2->sendBuffer();
 }
