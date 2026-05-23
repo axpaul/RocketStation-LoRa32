@@ -6,25 +6,55 @@ void ScreenText(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2) {
   if (Wire.endTransmission() == 0) 
   { 
     u8g2->begin();
-    u8g2->clearBuffer();
     u8g2->setFlipMode(0);
     u8g2->setFontMode(1);
     u8g2->setDrawColor(1);
     u8g2->setFontDirection(0);
-    u8g2->firstPage();
 
-    do 
-    {
+    // Dynamic 3-second startup animation (15 frames of 200ms)
+    for (int frame = 0; frame < 15; frame++) {
+      u8g2->clearBuffer();
+      
+      // Draw Title and Subtitle on the left
       u8g2->setFont(u8g2_font_fur17_tf);
-      u8g2->drawStr(12, 26, "NECTAR");
-      u8g2->drawHLine(2, 35, 124);
-      u8g2->drawHLine(2, 36, 124);
+      u8g2->drawStr(5, 26, "NECTAR");
+      u8g2->drawHLine(2, 33, 85);
+      u8g2->drawHLine(2, 34, 85);
       u8g2->setFont(u8g2_font_fur11_tf);
-      u8g2->drawStr(14, 58, "RX STATION");
-    } while (u8g2->nextPage());
-    u8g2->sendBuffer();
+      u8g2->drawStr(5, 52, "RX STATION");
+      
+      // Draw Antenna Tower on the right (centered at x = 110)
+      // Base legs
+      u8g2->drawLine(110, 35, 100, 58);
+      u8g2->drawLine(110, 35, 120, 58);
+      u8g2->drawHLine(97, 58, 27);
+      // Cross lattice
+      u8g2->drawLine(103, 51, 110, 43);
+      u8g2->drawLine(117, 51, 110, 43);
+      // Vertical mast
+      u8g2->drawVLine(110, 22, 13);
+      // Tip disc
+      u8g2->drawDisc(110, 22, 2);
+
+      // Animate transmitting waves (left quadrants, propagating outward)
+      int waveStage = frame % 5; // Cycle: 0 -> 1 -> 2 -> 3 -> 4
+      if (waveStage >= 1) {
+        u8g2->drawCircle(110, 22, 7, U8G2_DRAW_UPPER_LEFT | U8G2_DRAW_LOWER_LEFT);
+      }
+      if (waveStage >= 2) {
+        u8g2->drawCircle(110, 22, 14, U8G2_DRAW_UPPER_LEFT | U8G2_DRAW_LOWER_LEFT);
+      }
+      if (waveStage >= 3) {
+        u8g2->drawCircle(110, 22, 21, U8G2_DRAW_UPPER_LEFT | U8G2_DRAW_LOWER_LEFT);
+      }
+      if (waveStage >= 4) {
+        u8g2->drawCircle(110, 22, 28, U8G2_DRAW_UPPER_LEFT | U8G2_DRAW_LOWER_LEFT);
+      }
+
+      u8g2->sendBuffer();
+      delay(200);
+    }
     u8g2->setFont(u8g2_font_fur11_tf);
-    delay(3000);
   }
 }
 
