@@ -115,19 +115,11 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
     u8g2->drawStr(0, 58, buf);
   } 
   else {
-    // Écran 2 : Statistiques du réseau
-    snprintf(buf, sizeof(buf), "Trackers actifs: %d", activeTrackersCount);
-    u8g2->drawStr(0, 30, buf);
+    // Écran 2 : Configuration radio et statistiques de flux
+    u8g2->drawStr(0, 30, "LoRa @ 869.525 MHz");
+    u8g2->drawStr(0, 44, "SF: 8  |  BW: 250 kHz");
     
-    snprintf(buf, sizeof(buf), "Debit: %d octets/s", dataRateBps);
-    u8g2->drawStr(0, 44, buf);
-    
-    if (hasReceivedAny) {
-      unsigned long elapsed = (millis() - lastPacketTime) / 1000;
-      snprintf(buf, sizeof(buf), "Dernier RX: %d s", elapsed);
-    } else {
-      snprintf(buf, sizeof(buf), "Dernier RX: aucun");
-    }
+    snprintf(buf, sizeof(buf), "Trackers: %d  |  %d B/s", activeTrackersCount, dataRateBps);
     u8g2->drawStr(0, 58, buf);
   }
 
