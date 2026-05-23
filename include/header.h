@@ -1,6 +1,9 @@
 // Author : Paul Miailhe
 // Date : 14/06/2023
 
+#ifndef HEADER_H
+#define HEADER_H
+
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
@@ -36,10 +39,13 @@
 #define NECTAR_MAGIC 0xEB
 #define FREQUENCY 869.525 
 
+extern ESP32Time rtc;
+extern char logFileName[32];
+
 void ScreenText(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2);
 void SDCardDetection(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SPIClass* SDSPI, bool* SDCard);
 void checkSDCardSpace(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2);
-void writeFrameToFile(const uint8_t* frame, size_t length);
+void writeFrameToFile(const char* filepath, const uint8_t* frame, size_t length, float rssi, float snr, const char* ssid_str, uint8_t apid);
 
 void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio);
 size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, uint8_t* byteArr, size_t maxLen);
@@ -48,3 +54,5 @@ void RadioStartListen(SX1276 *radio);
 
 uint16_t calculate_crc16(const uint8_t *data, size_t len);
 void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const uint8_t *payload, size_t len);
+
+#endif // HEADER_H

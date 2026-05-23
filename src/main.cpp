@@ -4,6 +4,7 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C *u8g2 = nullptr;
 SPIClass *SDSPI = nullptr;
 bool *SDCard = nullptr;
 size_t receivedLen = 0;
+char logFileName[32] = "/log.csv";
 uint8_t *byteArr = nullptr;
 SX1276 radio = new Module(RADIO_CS_PIN, RADIO_DIO0_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
 
@@ -25,6 +26,16 @@ void setup()
   //SD card:
   SDCardDetection(u8g2, SDSPI, SDCard);
   if (*SDCard){
+    int fileIndex = 0;
+    do {
+      snprintf(logFileName, sizeof(logFileName), "/log_%d.csv", fileIndex++);
+    } while (SD.exists(logFileName));
+
+    File log = SD.open(logFileName, FILE_WRITE);
+    if (log) {
+      log.println("Timestamp,RSSI,SNR,SSID,APID,RawFrame");
+      log.close();
+    }
     checkSDCardSpace(u8g2);
   }
   //Radio:
@@ -48,7 +59,16 @@ void loop() {
       sendNectarFrame(ssid_type, ssid_num, apid, payload, payload_len);
       
       if (*SDCard){
-        writeFrameToFile(byteArr, receivedLen);  
+        const char* ssid_prefix = "OTHER";
+        if (ssid_type == 0) ssid_prefix = "FX";
+        else if (ssid_type == 1) ssid_prefix = "MF";
+        else if (ssid_type == 2) ssid_prefix = "BALLOON";
+        else if (ssid_type == 3) ssid_prefix = "OTHER";
+
+        char ssid_str[32];
+        snprintf(ssid_str, sizeof(ssid_str), "%s%d", ssid_prefix, ssid_num);
+
+        writeFrameToFile(logFileName, byteArr, receivedLen, radio.getRSSI(), radio.getSNR(), ssid_str, apid);  
       }
     }
   }

@@ -94,17 +94,35 @@ void checkSDCardSpace(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2) {
   u8g2->clearBuffer();
 }
 
-void writeFrameToFile(const uint8_t* frame, size_t length) {
-  File log;
-  log = SD.open("/log.txt", FILE_APPEND);
+void writeFrameToFile(const char* filepath, const uint8_t* frame, size_t length, float rssi, float snr, const char* ssid_str, uint8_t apid) {
+  File log = SD.open(filepath, FILE_APPEND);
   if (log) {
+    // 1. Horodatage (HH:MM:SS) depuis l'horloge RTC
+    char timeStr[16];
+    snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d", rtc.getHour(true), rtc.getMinute(), rtc.getSecond());
+    log.print(timeStr);
+    log.print(",");
+
+    // 2. Paramètres physiques (RSSI, SNR)
+    log.print(rssi);
+    log.print(",");
+    log.print(snr);
+    log.print(",");
+
+    // 3. Paramètres de trame (SSID, APID)
+    log.print(ssid_str);
+    log.print(",");
+    log.print(apid);
+    log.print(",");
+
+    // 4. Trame brute en Hexadécimal continu
     for (size_t i = 0; i < length; i++) {
-      char hex[4];  // Inclure l'espace après l'octet hexadécimal
-      sprintf(hex, "%02X ", frame[i]);
+      char hex[3];
+      sprintf(hex, "%02X", frame[i]);
       log.print(hex);
     }
 
-    log.println();  // Utiliser println() pour ajouter automatiquement une nouvelle ligne
+    log.println();
     log.close();
   } 
 }
