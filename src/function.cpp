@@ -67,24 +67,59 @@ void SDCardDetection(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SPIClass* SDSPI,
     *SDCard = 0;
     Serial.println("[SD] Initialization FAILED!");
     
-    // Alerte visuelle rapide au boot
-    u8g2->clearBuffer();
-    u8g2->drawStr(0, 32, "SD Card: FAILED!");
-    u8g2->sendBuffer();
-    delay(1500);
+    // Blinking visual alert at boot (6 toggles, 300ms each = 1.8s)
+    for (int i = 0; i < 6; i++) {
+      u8g2->clearBuffer();
+      if (i % 2 == 0) {
+        // Draw warning triangle
+        u8g2->drawLine(64, 10, 46, 38);
+        u8g2->drawLine(64, 10, 82, 38);
+        u8g2->drawLine(46, 38, 82, 38);
+        u8g2->drawLine(64, 11, 47, 37);
+        u8g2->drawLine(64, 11, 81, 37);
+        u8g2->drawLine(47, 37, 81, 37);
+        
+        // Exclamation point
+        u8g2->drawBox(63, 18, 2, 10);
+        u8g2->drawBox(63, 31, 2, 2);
+        
+        // Text
+        int w = u8g2->getStrWidth("SD CARD: FAILED!");
+        u8g2->drawStr((128 - w) / 2, 56, "SD CARD: FAILED!");
+      }
+      u8g2->sendBuffer();
+      delay(300);
+    }
   }  
   else {
     *SDCard = 1;
     uint32_t cardSize = SD.cardSize() / (1024 * 1024);
     Serial.printf("[SD] Initialization OK. Size: %.2f GB\n", cardSize / 1024.0);
 
-    // Notification rapide de succès
+    // Success display with a circular checkmark
     u8g2->clearBuffer();
+    
+    // Draw thick circle
+    u8g2->drawCircle(64, 26, 14);
+    u8g2->drawCircle(64, 26, 13);
+    
+    // Draw checkmark
+    u8g2->drawLine(55, 25, 61, 31);
+    u8g2->drawLine(55, 26, 61, 32);
+    u8g2->drawLine(55, 27, 61, 33);
+    
+    u8g2->drawLine(61, 31, 73, 19);
+    u8g2->drawLine(61, 32, 73, 20);
+    u8g2->drawLine(61, 33, 73, 21);
+
+    // Success text
     char buf[64];
-    snprintf(buf, sizeof(buf), "SD Card: OK (%.1f GB)", cardSize / 1024.0);
-    u8g2->drawStr(0, 32, buf);
+    snprintf(buf, sizeof(buf), "SD CARD: OK (%.1f GB)", cardSize / 1024.0);
+    int w = u8g2->getStrWidth(buf);
+    u8g2->drawStr((128 - w) / 2, 56, buf);
+    
     u8g2->sendBuffer();
-    delay(1000);
+    delay(1500);
   }
 }
 
