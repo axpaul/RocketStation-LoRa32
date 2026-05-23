@@ -32,8 +32,8 @@
 
 #define ADC_PIN                     27
 
-#define CRC8_DPOLY 0x31
-#define NbTrame  33     
+#define MAX_FRAME_SIZE 255
+#define NECTAR_MAGIC 0xEB
 #define FREQUENCY 869.525 
 
 void ScreenText(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2);
@@ -42,9 +42,9 @@ void checkSDCardSpace(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2);
 void writeFrameToFile(const uint8_t* frame, size_t length);
 
 void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio);
-uint8_t RadioReceive (U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, byte* byteArr);
+size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, uint8_t* byteArr, size_t maxLen);
 void setFlag(void);
 void RadioStartListen(SX1276 *radio);
 
-uint8_t calculate_crc8(uint8_t *data, size_t len);
-void sendWithCRC(uint8_t *data, size_t len);
+uint16_t calculate_crc16(const uint8_t *data, size_t len);
+void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const uint8_t *payload, size_t len);

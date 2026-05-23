@@ -3,7 +3,7 @@
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C *u8g2 = nullptr;
 SPIClass *SDSPI = nullptr;
 bool *SDCard = nullptr;
-uint8_t receivedFlagMain = false;
+size_t receivedLen = 0;
 uint8_t *byteArr = nullptr;
 SX1276 radio = new Module(RADIO_CS_PIN, RADIO_DIO0_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
 
@@ -18,7 +18,7 @@ void setup()
   u8g2 = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0, U8X8_PIN_NONE);
   SDSPI = new SPIClass(HSPI);
   SDCard = new bool;
-  byteArr = new uint8_t[NbTrame];
+  byteArr = new uint8_t[MAX_FRAME_SIZE];
   *SDCard = false;
   ScreenText(u8g2);
 
@@ -33,12 +33,23 @@ void setup()
 
 void loop() {
   // put your main code here, to run repeatedly:
-  receivedFlagMain = RadioReceive(u8g2, &radio, byteArr);
+  receivedLen = RadioReceive(u8g2, &radio, byteArr, MAX_FRAME_SIZE);
   
-  if(receivedFlagMain == true){
-    sendWithCRC(byteArr, NbTrame);
-    if (*SDCard){
-      writeFrameToFile(byteArr, NbTrame);  
+  if (receivedLen > 0){
+    // La trame minimale doit contenir au moins 3 octets : [SSID_NUM] [APID] [SSID_TYPE]
+    if (receivedLen >= 3) {
+      uint8_t ssid_num  = byteArr[0];
+      uint8_t apid      = byteArr[1];
+      uint8_t ssid_type = byteArr[2];
+      
+      const uint8_t* payload = &byteArr[3];
+      size_t payload_len     = receivedLen - 3;
+      
+      sendNectarFrame(ssid_type, ssid_num, apid, payload, payload_len);
+      
+      if (*SDCard){
+        writeFrameToFile(byteArr, receivedLen);  
+      }
     }
   }
 }
