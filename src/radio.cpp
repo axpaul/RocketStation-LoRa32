@@ -4,6 +4,12 @@ volatile bool receivedFlag = false;
 volatile bool enableInterrupt = true;
 ESP32Time rtc;
 
+char dispStatus[32] = "IDLE";
+char dispSsidApid[32] = "No Frame";
+float dispRssi = 0.0;
+float dispSnr = 0.0;
+bool dispHasFrame = false;
+
 void setFlag(void)
 {
     // check if the interrupt is enabled
@@ -63,6 +69,41 @@ void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio){
   }
 }
 
+void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
+  u8g2->clearBuffer();
+  u8g2->setFont(u8g2_font_ncenB08_tr);
+
+  char buf[64];
+  
+  // Ligne 1 : Statut et Horloge en temps réel
+  u8g2->drawStr(0, 12, dispStatus);
+  snprintf(buf, sizeof(buf), "%02d:%02d:%02d", rtc.getHour(true), rtc.getMinute(), rtc.getSecond());
+  u8g2->drawStr(75, 12, buf);
+  
+  u8g2->drawHLine(0, 15, 128);
+
+  // Ligne 2 : SSID
+  u8g2->drawStr(0, 30, dispSsidApid);
+
+  // Ligne 3 : RSSI
+  if (dispHasFrame) {
+    snprintf(buf, sizeof(buf), "RSSI: %.2f dBm", dispRssi);
+  } else {
+    snprintf(buf, sizeof(buf), "RSSI: -- dBm");
+  }
+  u8g2->drawStr(0, 44, buf);
+
+  // Ligne 4 : SNR
+  if (dispHasFrame) {
+    snprintf(buf, sizeof(buf), "SNR: %.2f dB", dispSnr);
+  } else {
+    snprintf(buf, sizeof(buf), "SNR: -- dB");
+  }
+  u8g2->drawStr(0, 58, buf);
+
+  u8g2->sendBuffer();
+}
+
 size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, uint8_t* byteArr, size_t maxLen){
   
   if (receivedFlag) {
@@ -82,13 +123,8 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
     int state = radio->readData(byteArr, length);
 
     if (state == RADIOLIB_ERR_NONE) {
-      u8g2->clearBuffer();
-
-      char buf[256];
-      // Affiche le statut et l'heure
-      snprintf(buf, sizeof(buf), "OK - %02d:%02d:%02d", rtc.getHour(true), rtc.getMinute(), rtc.getSecond());
-      u8g2->drawStr(0, 12, buf);
-
+      strcpy(dispStatus, "OK");
+      
       // Décode le SSID et l'APID de la trame
       if (length >= 3) {
         uint8_t ssid_num  = byteArr[0];
@@ -101,51 +137,36 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
         else if (ssid_type == 2) ssid_prefix = "BALLOON";
         else if (ssid_type == 3) ssid_prefix = "OTHER";
 
-        snprintf(buf, sizeof(buf), "%s%d (APID:%d)", ssid_prefix, ssid_num, apid);
+        snprintf(dispSsidApid, sizeof(dispSsidApid), "%s%d (APID:%d)", ssid_prefix, ssid_num, apid);
       } else {
-        snprintf(buf, sizeof(buf), "Trame invalide (<3B)");
+        strcpy(dispSsidApid, "Trame invalide (<3B)");
       }
-      u8g2->drawStr(0, 26, buf);
+      
+      dispRssi = radio->getRSSI();
+      dispSnr = radio->getSNR();
+      dispHasFrame = true;
 
-      // Affiche le RSSI et le SNR
-      snprintf(buf, sizeof(buf), "RSSI: %.2f dBm", radio->getRSSI());
-      u8g2->drawStr(0, 40, buf);
-      snprintf(buf, sizeof(buf), "SNR: %.2f dB", radio->getSNR());
-      u8g2->drawStr(0, 54, buf);
-      u8g2->sendBuffer();
+      updateDisplay(u8g2, radio);
 
       RadioStartListen(radio);
       return length;
     }
     else if (state == RADIOLIB_ERR_CRC_MISMATCH) {
-      // packet was received, but is malformed
-      char buf[256];
-      u8g2->clearBuffer();
-      u8g2->drawStr(0, 12, "Radio CRC error!");
-      snprintf(buf, sizeof(buf), "Last: %02d:%02d:%02d", rtc.getHour(true), rtc.getMinute(), rtc.getSecond());
-      u8g2->drawStr(0, 26, buf);
-      snprintf(buf, sizeof(buf), "RSSI: %.2f dBm", radio->getRSSI());
-      u8g2->drawStr(0, 40, buf);
-      snprintf(buf, sizeof(buf), "SNR: %.2f dB", radio->getSNR());
-      u8g2->drawStr(0, 54, buf);
-      u8g2->sendBuffer();
+      strcpy(dispStatus, "CRC ERR");
+      dispRssi = radio->getRSSI();
+      dispSnr = radio->getSNR();
+      
+      updateDisplay(u8g2, radio);
 
       RadioStartListen(radio);
       return 0;
     } 
     else {
-      // some other error occurred
-      char buf[256];
-      u8g2->clearBuffer();
-      snprintf(buf, sizeof(buf), "Failed, code %d", state);
-      u8g2->drawStr(0, 12, buf);
-      snprintf(buf, sizeof(buf), "Last: %02d:%02d:%02d", rtc.getHour(true), rtc.getMinute(), rtc.getSecond());
-      u8g2->drawStr(0, 26, buf);
-      snprintf(buf, sizeof(buf), "RSSI: %.2f dBm", radio->getRSSI());
-      u8g2->drawStr(0, 40, buf);
-      snprintf(buf, sizeof(buf), "SNR: %.2f dB", radio->getSNR());
-      u8g2->drawStr(0, 54, buf);
-      u8g2->sendBuffer();
+      snprintf(dispStatus, sizeof(dispStatus), "ERR %d", state);
+      dispRssi = radio->getRSSI();
+      dispSnr = radio->getSNR();
+      
+      updateDisplay(u8g2, radio);
 
       RadioStartListen(radio);
       return 0;

@@ -72,4 +72,11 @@ void loop() {
       }
     }
   }
+
+  // Mettre à jour l'horloge en temps réel sur l'écran toutes les secondes
+  static unsigned long lastUpdate = 0;
+  if (millis() - lastUpdate >= 1000) {
+    lastUpdate = millis();
+    updateDisplay(u8g2, &radio);
+  }
 }
