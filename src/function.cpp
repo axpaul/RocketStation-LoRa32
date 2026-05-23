@@ -32,14 +32,29 @@ void SDCardDetection(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SPIClass* SDSPI,
   pinMode(SDCARD_MISO, INPUT_PULLUP);
   SDSPI->begin(SDCARD_SCLK, SDCARD_MISO, SDCARD_MOSI, SDCARD_CS);
 
+  u8g2->setFont(u8g2_font_ncenB08_tr);
   if (!SD.begin(SDCARD_CS, *SDSPI)) {
     *SDCard = 0;
     Serial.println("[SD] Initialization FAILED!");
+    
+    // Alerte visuelle rapide au boot
+    u8g2->clearBuffer();
+    u8g2->drawStr(0, 32, "SD Card: FAILED!");
+    u8g2->sendBuffer();
+    delay(1500);
   }  
   else {
     *SDCard = 1;
     uint32_t cardSize = SD.cardSize() / (1024 * 1024);
     Serial.printf("[SD] Initialization OK. Size: %.2f GB\n", cardSize / 1024.0);
+
+    // Notification rapide de succès
+    u8g2->clearBuffer();
+    char buf[64];
+    snprintf(buf, sizeof(buf), "SD Card: OK (%.1f GB)", cardSize / 1024.0);
+    u8g2->drawStr(0, 32, buf);
+    u8g2->sendBuffer();
+    delay(1000);
   }
 }
 

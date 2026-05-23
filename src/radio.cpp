@@ -4,7 +4,9 @@ volatile bool receivedFlag = false;
 volatile bool enableInterrupt = true;
 ESP32Time rtc;
 
-char dispStatus[32] = "IDLE";
+char dispStatus[32] = "RX: 0";
+static uint32_t rxCount = 0;
+static uint32_t errCount = 0;
 char dispSsidApid[32] = "No Frame";
 float dispRssi = 0.0;
 float dispSnr = 0.0;
@@ -125,7 +127,12 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
     int state = radio->readData(byteArr, length);
 
     if (state == RADIOLIB_ERR_NONE) {
-      strcpy(dispStatus, "OK");
+      rxCount++;
+      if (errCount == 0) {
+        snprintf(dispStatus, sizeof(dispStatus), "RX: %d", rxCount);
+      } else {
+        snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount, errCount);
+      }
       
       // Décode le SSID et l'APID de la trame
       if (length >= 3) {
@@ -154,7 +161,8 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
       return length;
     }
     else if (state == RADIOLIB_ERR_CRC_MISMATCH) {
-      strcpy(dispStatus, "CRC ERR");
+      errCount++;
+      snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount, errCount);
       dispRssi = radio->getRSSI();
       dispSnr = radio->getSNR();
       
@@ -164,7 +172,8 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
       return 0;
     } 
     else {
-      snprintf(dispStatus, sizeof(dispStatus), "ERR %d", state);
+      errCount++;
+      snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount, errCount);
       dispRssi = radio->getRSSI();
       dispSnr = radio->getSNR();
       

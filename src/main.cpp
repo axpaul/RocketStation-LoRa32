@@ -37,8 +37,6 @@ void setup()
       log.close();
     }
     checkSDCardSpace(u8g2);
-  } else {
-    strcpy(dispStatus, "SD ERR");
   }
   //Radio:
   RadioSettings(u8g2, &radio);
