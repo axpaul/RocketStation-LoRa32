@@ -11,6 +11,11 @@ void ScreenText(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2) {
     u8g2->setDrawColor(1);
     u8g2->setFontDirection(0);
 
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    char idBuf[32];
+    snprintf(idBuf, sizeof(idBuf), "ID: %02X%02X  v%s", mac[4], mac[5], FW_VERSION);
+
     // Dynamic 3-second startup animation (15 frames of 200ms)
     for (int frame = 0; frame < 15; frame++) {
       u8g2->clearBuffer();
@@ -22,6 +27,10 @@ void ScreenText(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2) {
       u8g2->drawHLine(2, 34, 85);
       u8g2->setFont(u8g2_font_fur11_tf);
       u8g2->drawStr(5, 52, "RX STATION");
+      
+      // Info footer
+      u8g2->setFont(u8g2_font_5x7_tr);
+      u8g2->drawStr(5, 62, idBuf);
       
       // Draw Antenna Tower on the right (centered at x = 110)
       // Base legs

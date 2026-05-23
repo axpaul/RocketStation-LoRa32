@@ -11,6 +11,17 @@ SX1276 radio = new Module(RADIO_CS_PIN, RADIO_DIO0_PIN, RADIO_RST_PIN, RADIO_BUS
 void setup() 
 {
   Serial.begin(115200);
+  delay(100); // Give serial monitor time to connect
+
+  uint8_t mac[6];
+  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+  Serial.println("\n=========================================");
+  Serial.printf("[SYSTEM] Firmware Version: %s\n", FW_VERSION);
+  Serial.printf("[SYSTEM] Station ID (MAC): %02X:%02X:%02X:%02X:%02X:%02X\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  Serial.printf("[SYSTEM] Chip Model:      %s (Rev %d)\n", ESP.getChipModel(), ESP.getChipRevision());
+  Serial.printf("[SYSTEM] Flash Size:      %.1f MB\n", ESP.getFlashChipSize() / (1024.0 * 1024.0));
+  Serial.println("=========================================");
+
   SPI.begin(RADIO_SCLK_PIN, RADIO_MISO_PIN, RADIO_MOSI_PIN);
   Wire.begin(I2C_SDA, I2C_SCL);
   pinMode(BOARD_LED, OUTPUT);

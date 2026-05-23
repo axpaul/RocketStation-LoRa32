@@ -4,6 +4,8 @@
 #ifndef HEADER_H
 #define HEADER_H
 
+#define FW_VERSION "1.3.0"
+
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
