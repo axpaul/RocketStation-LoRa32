@@ -21,7 +21,7 @@ void setup()
   SDCard = new bool;
   byteArr = new uint8_t[MAX_FRAME_SIZE];
   *SDCard = false;
-  ScreenText(u8g2);
+  u8g2->begin();
 
   //SD card:
   SDCardDetection(u8g2, SDSPI, SDCard);
@@ -37,9 +37,14 @@ void setup()
       log.close();
     }
     checkSDCardSpace(u8g2);
+  } else {
+    strcpy(dispStatus, "SD ERR");
   }
   //Radio:
   RadioSettings(u8g2, &radio);
+
+  // Premier affichage immédiat
+  updateDisplay(u8g2, &radio);
 }
 
 void loop() {

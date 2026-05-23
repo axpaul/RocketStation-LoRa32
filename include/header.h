@@ -41,8 +41,8 @@
 
 extern ESP32Time rtc;
 extern char logFileName[32];
+extern char dispStatus[32];
 
-void ScreenText(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2);
 void SDCardDetection(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SPIClass* SDSPI, bool* SDCard);
 void checkSDCardSpace(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2);
 void writeFrameToFile(const char* filepath, const uint8_t* frame, size_t length, float rssi, float snr, const char* ssid_str, uint8_t apid);
