@@ -56,7 +56,7 @@ void writeFrameToFile(const char* filepath, const uint8_t* frame, size_t length,
 void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio);
 size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, uint8_t* byteArr, size_t maxLen);
 void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio);
-void setFlag(void);
+void IRAM_ATTR setFlag(void);
 void RadioStartListen(SX1276 *radio);
 
 uint16_t calculate_crc16(const uint8_t *data, size_t len);

@@ -21,7 +21,7 @@ static unsigned long lastPacketTime = 0;
 static bool hasReceivedAny = false;
 static unsigned long lastRateCalculation = 0;
 
-void setFlag(void)
+void IRAM_ATTR setFlag(void)
 {
     // check if the interrupt is enabled
     if (!enableInterrupt) {

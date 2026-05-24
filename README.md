@@ -2,11 +2,13 @@
 
 **RocketStation-LoRa32** est une station au sol de réception LoRa destinée à capter la télémétrie de fusées expérimentales et de ballons-sondes. Elle repose sur la carte de développement **LilyGO TTGO T3 V1.6.1 (LoRa32 V2.1.6)** équipée d'un microcontrôleur ESP32, d'un module radio SX1276 et d'un écran OLED intégré. Elle fonctionne à la fréquence de 869.525 MHz.
 
+Le but principal de cette station est d'assurer l'interface de réception physique pour le logiciel de visualisation et de traitement de télémétrie [NectarMC](https://github.com/mlavardin/NectarMC).
+
 <p align="center">
   <img src="Image/DSC03016.JPG" alt="Station sol TTGO LoRa32 affichant NECTAR" width="800" />
 </p>
 
-Cette version du logiciel est optimisée pour être compatible avec le logiciel de traitement de télémétrie **NectarMC** en générant des trames binaires série conformes, en gérant dynamiquement les trackers et en enregistrant l'historique sur carte SD.
+Cette version du logiciel est optimisée pour être compatible avec le logiciel [NectarMC](https://github.com/mlavardin/NectarMC) en générant des trames binaires série conformes, en gérant dynamiquement les trackers et en enregistrant l'historique sur carte SD.
 
 ---
 
@@ -27,7 +29,7 @@ Voici les vues de la carte de développement ainsi que son brochage (Pinout) et 
 
 ## 🚀 Fonctionnalités principales
 
-*   **Compatibilité NectarMC** : Génère à la volée des trames binaires série structurées (Magic byte `0xEB`, `Id_mission` codé sur 16 bits en Little-Endian, calcul du `CRC16-CCITT` en Little-Endian) prêtes à être lues par NectarMC.
+*   **Compatibilité NectarMC** : Génère à la volée des trames binaires série structurées (Magic byte `0xEB`, `Id_mission` codé sur 16 bits en Little-Endian, calcul du `CRC16-CCITT` en Little-Endian) prêtes à être décodées et affichées en temps réel par le logiciel [NectarMC](https://github.com/mlavardin/NectarMC).
 *   **Réception LoRa dynamique** : Supporte des longueurs de paquets LoRa variables de manière totalement transparente.
 *   **Robustesse radio** : Utilise le CRC matériel du module SX1276 pour garantir l'intégrité de la liaison RF (les trames corrompues en vol sont directement jetées par le silicium).
 *   **Journalisation CSV incrémentale** : Crée un fichier par session de démarrage (`/log_0.csv`, `/log_1.csv`, etc.) pour éviter d'écraser vos données de vol précédentes.
@@ -59,7 +61,7 @@ Les informations détaillées s'affichent sous forme de deux écrans alternant a
 
 ## 🛰️ Structure des trames LoRa (Émetteurs)
 
-Pour que la station puisse router dynamiquement les trames vers NectarMC, les émetteurs/trackers doivent envoyer un paquet radio LoRa structuré comme suit :
+Pour que la station puisse router dynamiquement les trames vers le logiciel [NectarMC](https://github.com/mlavardin/NectarMC), les émetteurs/trackers doivent envoyer un paquet radio LoRa structuré comme suit :
 
 | Position | Type | Rôle | Description |
 | :--- | :--- | :--- | :--- |
@@ -72,7 +74,7 @@ Pour que la station puisse router dynamiquement les trames vers NectarMC, les é
 
 ## 💻 Format de trame série NectarMC (Sortie USB)
 
-Les trames émises par la station sol vers le PC sur le port série USB ont la structure binaire suivante (taille totale : $6 + N$ octets) :
+Les trames émises par la station sol vers le PC sur le port série USB sont lues par le logiciel [NectarMC](https://github.com/mlavardin/NectarMC) pour affichage et traitement. Elles ont la structure binaire suivante (taille totale : $6 + N$ octets) :
 
 ```
 ┌───────────────────────────────────────────┬──────────────┬─────────────────┐

@@ -16,18 +16,23 @@ uint16_t calculate_crc16(const uint8_t *data, size_t len) {
 }
 
 void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const uint8_t *payload, size_t len) {
-    // 1. Calculer le SSID (10 bits) et l'Id_mission (16 bits)
+    // 1. Limiter la longueur pour éviter tout débordement de buffer
+    if (len > 255) {
+        len = 255;
+    }
+
+    // 2. Calculer le SSID (10 bits) et l'Id_mission (16 bits)
     uint16_t ssid = ((ssid_type & 0x03) << 8) | ssid_num;
     uint16_t id_mission = (ssid << 6) | (apid & 0x3F);
 
-    // 2. Préparer le Header NectarMC (4 octets)
+    // 3. Préparer le Header NectarMC (4 octets)
     uint8_t header[4];
     header[0] = NECTAR_MAGIC;
     header[1] = id_mission & 0xFF;         // Encodage en Little-Endian (partie basse)
     header[2] = (id_mission >> 8) & 0xFF;  // Encodage en Little-Endian (partie haute)
     header[3] = (uint8_t)(len & 0xFF);     // payload_size
 
-    // 3. Assembler l'en-tête et la payload dans un buffer temporaire pour le calcul du CRC
+    // 4. Assembler l'en-tête et la payload dans un buffer temporaire pour le calcul du CRC
     // La taille max de la payload NectarMC est 255. La trame fait au max 4 + 255 = 259 octets.
     uint8_t frame[265];
     memcpy(frame, header, 4);
