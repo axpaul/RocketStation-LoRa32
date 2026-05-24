@@ -189,8 +189,8 @@ void loadLoRaConfig() {
   
   // Lit les clés. Si elles n'existent pas (1er démarrage), la valeur de secours par défaut est renvoyée
   activeConfig.frequency = prefs.getFloat("freq", DEFAULT_FREQUENCY);
-  activeConfig.spreadingFactor = prefs.getUChar("sf", 8);
-  activeConfig.bandwidth = prefs.getFloat("bw", 250.0f);
+  activeConfig.spreadingFactor = prefs.getUChar("sf", DEFAULT_SF);
+  activeConfig.bandwidth = prefs.getFloat("bw", DEFAULT_BW);
   
   prefs.end(); // Ferme proprement l'accès NVS
   
