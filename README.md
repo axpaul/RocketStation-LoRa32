@@ -46,20 +46,14 @@ Pendant le fonctionnement, l'écran est structuré en deux parties :
 *   **Milieu** : Statut de l'alimentation. Affiche `USB` avec une icône de batterie pleine s'il est alimenté par câble USB, ou affiche la tension de la batterie en volts (ex: `3.9V`) avec une icône de jauge proportionnelle au niveau de charge.
 *   **Droite** : Horloge temps réel (RTC) comptant le temps écoulé depuis le démarrage (`HH:MM:SS`).
 
-<p align="center">
-  <img src="Image/IMG_1197.jpg" alt="Close-up OLED Screen View" width="350" />
-  <img src="Image/IMG_1198.jpg" alt="Board running with Nectar text on screen" width="350" />
-</p>
-
 ### 2. Rotation des Écrans Principaux (Alternance toutes les 4 secondes)
-*   **Écran 1 (Dernière trame reçue)** :
-    *   *SSID / APID* (ex: `FX99 (APID:7)`)
-    *   *RSSI* physique (ex: `RSSI: -85.00 dBm`)
-    *   *SNR* physique (ex: `SNR: 9.50 dB`)
-*   **Écran 2 (Configuration Radio & Flux)** :
-    *   *Fréquence LoRa* configurée (`LoRa @ 869.525 MHz`)
-    *   *Modulation* (`SF: 8 | BW: 250 kHz`)
-    *   *Statistiques réseau* : Nombre d'émetteurs actifs détectés et débit de données instantané (ex: `Trackers: 2 | 34 B/s`).
+
+Les informations détaillées s'affichent sous forme de deux écrans alternant automatiquement toutes les 4 secondes :
+
+| Écran 1 : Infos de la dernière trame | Écran 2 : Configuration & Stats réseau |
+| :---: | :---: |
+| <img src="Image/IMG_1197.jpg" width="220" style="transform: rotate(90deg); margin: 40px 0;" /> | <img src="Image/IMG_1198.jpg" width="220" style="transform: rotate(90deg); margin: 40px 0;" /> |
+| **Dernier paquet reçu** : Affiche le SSID décodé, l'APID de l'émetteur, ainsi que le RSSI (dBm) et le SNR (dB) physiques du signal capté. | **Configuration & Débit** : Affiche la fréquence active, le Spreading Factor (SF), la bande passante (BW), le nombre de trackers actifs uniques et le débit de données instantané. |
 
 ---
 
