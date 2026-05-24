@@ -37,13 +37,13 @@ void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio){
   Serial.println("[SX1276] Initializing ...");
   rtc.setTime(0, 0, 0, 0, 0, 2023);
  
-  int state = radio->begin(FREQUENCY);
+  int state = radio->begin(activeConfig.frequency);
 
   if (state == RADIOLIB_ERR_NONE) {
     radio->setOutputPower(17);
-    radio->setBandwidth(250);
+    radio->setBandwidth(activeConfig.bandwidth);
     radio->setCurrentLimit(120);
-    radio->setSpreadingFactor(8);
+    radio->setSpreadingFactor(activeConfig.spreadingFactor);
     radio->setCRC(true, false);
     radio->setDio0Action(setFlag, RISING);
     state = radio->startReceive();
@@ -192,8 +192,11 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
   } 
   else {
     // Écran 2 : Configuration radio et statistiques de flux
-    u8g2->drawStr(0, 30, "LoRa @ 869.525 MHz");
-    u8g2->drawStr(0, 44, "SF: 8  |  BW: 250 kHz");
+    snprintf(buf, sizeof(buf), "LoRa @ %.3f MHz", activeConfig.frequency);
+    u8g2->drawStr(0, 30, buf);
+
+    snprintf(buf, sizeof(buf), "SF: %d  |  BW: %.1f kHz", activeConfig.spreadingFactor, activeConfig.bandwidth);
+    u8g2->drawStr(0, 44, buf);
     
     snprintf(buf, sizeof(buf), "Trackers: %d  |  %d B/s", activeTrackersCount, dataRateBps);
     u8g2->drawStr(0, 58, buf);

@@ -12,11 +12,19 @@ size_t receivedLen = 0;
 char logFileName[32] = "/log.csv";
 uint8_t *byteArr = byteArrStatic;
 SX1276 radio = new Module(RADIO_CS_PIN, RADIO_DIO0_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
+LoRaConfig activeConfig;
 
 void setup() 
 {
   Serial.begin(115200);
   delay(100); // Give serial monitor time to connect
+
+  loadLoRaConfig();
+
+#if ENABLE_BLUETOOTH
+  SerialBT.begin("Nectar-RxStation");
+  Serial.println("[SYSTEM] Bluetooth Serial started: 'Nectar-RxStation'");
+#endif
 
   uint8_t mac[6];
   esp_read_mac(mac, ESP_MAC_WIFI_STA);
@@ -59,6 +67,8 @@ void setup()
 }
 
 void loop() {
+  checkSerialCommands(&radio);
+  
   // put your main code here, to run repeatedly:
   receivedLen = RadioReceive(u8g2, &radio, byteArr, MAX_FRAME_SIZE);
   
@@ -94,5 +104,113 @@ void loop() {
   if (millis() - lastUpdate >= 1000) {
     lastUpdate = millis();
     updateDisplay(u8g2, &radio);
+  }
+}
+
+void checkSerialCommands(SX1276 *radio) {
+  static char serialBuf[64];
+  static size_t serialIdx = 0;
+  
+  while (Serial.available() > 0) {
+    char c = Serial.read();
+    if (c == '\n' || c == '\r') {
+      if (serialIdx > 0) {
+        serialBuf[serialIdx] = '\0';
+        handleConfigCommand(serialBuf, Serial, radio);
+        serialIdx = 0;
+      }
+    } else if (serialIdx < sizeof(serialBuf) - 1) {
+      serialBuf[serialIdx++] = c;
+    }
+  }
+
+#if ENABLE_BLUETOOTH
+  static char btBuf[64];
+  static size_t btIdx = 0;
+  
+  while (SerialBT.available() > 0) {
+    char c = SerialBT.read();
+    if (c == '\n' || c == '\r') {
+      if (btIdx > 0) {
+        btBuf[btIdx] = '\0';
+        handleConfigCommand(btBuf, SerialBT, radio);
+        btIdx = 0;
+      }
+    } else if (btIdx < sizeof(btBuf) - 1) {
+      btBuf[btIdx++] = c;
+    }
+  }
+#endif
+}
+
+void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio) {
+  if (strncmp(cmd, "SET FREQ ", 9) == 0) {
+    float val = atof(cmd + 9);
+    if (val >= FREQ_MIN && val <= FREQ_MAX) {
+      activeConfig.frequency = val;
+      int state = radio->setFrequency(val);
+      if (state == RADIOLIB_ERR_NONE) {
+        responseStream.printf("OK: Frequency set to %.3f MHz\n", val);
+      } else {
+        responseStream.printf("ERROR: Failed to set frequency, code %d\n", state);
+      }
+    } else {
+      responseStream.printf("ERROR: Frequency %.3f out of native band limits [%.1f - %.1f] MHz\n", val, FREQ_MIN, FREQ_MAX);
+    }
+  }
+  else if (strncmp(cmd, "SET SF ", 7) == 0) {
+    int val = atoi(cmd + 7);
+    if (val >= 6 && val <= 12) {
+      activeConfig.spreadingFactor = val;
+      int state = radio->setSpreadingFactor(val);
+      if (state == RADIOLIB_ERR_NONE) {
+        responseStream.printf("OK: Spreading Factor set to %d\n", val);
+      } else {
+        responseStream.printf("ERROR: Failed to set SF, code %d\n", state);
+      }
+    } else {
+      responseStream.println("ERROR: SF must be between 6 and 12");
+    }
+  }
+  else if (strncmp(cmd, "SET BW ", 7) == 0) {
+    float val = atof(cmd + 7);
+    if (val > 0.0f) {
+      activeConfig.bandwidth = val;
+      int state = radio->setBandwidth(val);
+      if (state == RADIOLIB_ERR_NONE) {
+        responseStream.printf("OK: Bandwidth set to %.1f kHz\n", val);
+      } else {
+        responseStream.printf("ERROR: Failed to set BW, code %d\n", state);
+      }
+    } else {
+      responseStream.println("ERROR: Bandwidth must be greater than 0");
+    }
+  }
+  else if (strcmp(cmd, "GET CFG") == 0 || strcmp(cmd, "STATUS") == 0) {
+    responseStream.println("--- RocketStation Configuration ---");
+    responseStream.printf("Firmware Version  : %s\n", FW_VERSION);
+    responseStream.printf("Native Band Limit : %d MHz\n", LORA_BAND_NATIVE);
+    responseStream.printf("Allowed Range     : [%.1f - %.1f] MHz\n", FREQ_MIN, FREQ_MAX);
+    responseStream.printf("Frequency (Active): %.3f MHz\n", activeConfig.frequency);
+    responseStream.printf("Spreading Factor  : %d\n", activeConfig.spreadingFactor);
+    responseStream.printf("Bandwidth         : %.1f kHz\n", activeConfig.bandwidth);
+    responseStream.printf("SD Card Connected : %s\n", *SDCard ? "Yes" : "No");
+#if ENABLE_BLUETOOTH
+    responseStream.printf("Bluetooth Client  : %s\n", SerialBT.connected() ? "Connected" : "Disconnected");
+#endif
+    responseStream.println("-----------------------------------");
+  }
+  else if (strcmp(cmd, "SAVE") == 0) {
+    saveLoRaConfig();
+    responseStream.println("OK: Configuration saved to NVS.");
+  }
+  else if (strcmp(cmd, "RESET") == 0) {
+    resetLoRaConfig();
+    responseStream.println("OK: NVS config cleared. Rebooting device...");
+    delay(1000);
+    ESP.restart();
+  }
+  else {
+    responseStream.printf("ERROR: Unknown command '%s'\n", cmd);
   }
 }

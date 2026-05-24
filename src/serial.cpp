@@ -1,5 +1,9 @@
 #include "header.h"
 
+#if ENABLE_BLUETOOTH
+BluetoothSerial SerialBT;
+#endif
+
 uint16_t calculate_crc16(const uint8_t *data, size_t len) {
     uint16_t crc = 0xFFFF;
     for (size_t i = 0; i < len; ++i) {
@@ -40,11 +44,20 @@ void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const ui
         memcpy(frame + 4, payload, len);
     }
 
-    // 4. Calculer le CRC16 sur Header + Payload
+    // 5. Calculer le CRC16 sur Header + Payload
     uint16_t crc = calculate_crc16(frame, 4 + len);
 
-    // 5. Émettre la trame complète sur le port série
+    // 6. Émettre la trame complète sur le port série USB
     Serial.write(frame, 4 + len);
     Serial.write(crc & 0xFF);         // CRC16 Little-Endian (partie basse)
     Serial.write((crc >> 8) & 0xFF);  // CRC16 Little-Endian (partie haute)
+
+#if ENABLE_BLUETOOTH
+    // 7. Émettre également en Bluetooth si connecté
+    if (SerialBT.connected()) {
+        SerialBT.write(frame, 4 + len);
+        SerialBT.write(crc & 0xFF);
+        SerialBT.write((crc >> 8) & 0xFF);
+    }
+#endif
 }

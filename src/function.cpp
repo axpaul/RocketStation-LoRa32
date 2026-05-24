@@ -1,4 +1,5 @@
 #include "header.h"
+#include <Preferences.h>
 
 void ScreenText(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2) {
   Wire.beginTransmission(0x3C);
@@ -177,4 +178,36 @@ void writeFrameToFile(const char* filepath, const uint8_t* frame, size_t length,
     Serial.println("[SD] Error: Failed to open log file. SD card marked as OFFLINE.");
     *SDCard = false;
   }
+}
+
+void loadLoRaConfig() {
+  Preferences prefs;
+  prefs.begin("loracfg", false);
+  activeConfig.frequency = prefs.getFloat("freq", DEFAULT_FREQUENCY);
+  activeConfig.spreadingFactor = prefs.getUChar("sf", 8);
+  activeConfig.bandwidth = prefs.getFloat("bw", 250.0f);
+  prefs.end();
+  
+  Serial.printf("[CONFIG] Loaded from NVS: Freq=%.3f MHz, SF=%d, BW=%.1f kHz\n", 
+                activeConfig.frequency, activeConfig.spreadingFactor, activeConfig.bandwidth);
+}
+
+void saveLoRaConfig() {
+  Preferences prefs;
+  prefs.begin("loracfg", false);
+  prefs.putFloat("freq", activeConfig.frequency);
+  prefs.putUChar("sf", activeConfig.spreadingFactor);
+  prefs.putFloat("bw", activeConfig.bandwidth);
+  prefs.end();
+  
+  Serial.println("[CONFIG] Saved current config to NVS.");
+}
+
+void resetLoRaConfig() {
+  Preferences prefs;
+  prefs.begin("loracfg", false);
+  prefs.clear();
+  prefs.end();
+  
+  Serial.println("[CONFIG] NVS configuration cleared.");
 }

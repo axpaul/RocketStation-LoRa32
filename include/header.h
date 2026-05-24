@@ -15,6 +15,13 @@
 #include <RadioLib.h>
 #include <U8g2lib.h>
 
+#define ENABLE_BLUETOOTH 1
+
+#if ENABLE_BLUETOOTH
+#include "BluetoothSerial.h"
+extern BluetoothSerial SerialBT;
+#endif
+
 #define I2C_SDA                     21
 #define I2C_SCL                     22
 
@@ -39,8 +46,30 @@
 
 #define MAX_FRAME_SIZE 255
 #define NECTAR_MAGIC 0xEB
-#define FREQUENCY 869.525 
 
+#ifndef LORA_BAND_NATIVE
+#define LORA_BAND_NATIVE 868
+#endif
+
+#if LORA_BAND_NATIVE == 868
+#define FREQ_MIN 860.0f
+#define FREQ_MAX 880.0f
+#define DEFAULT_FREQUENCY 869.525f
+#elif LORA_BAND_NATIVE == 433
+#define FREQ_MIN 410.0f
+#define FREQ_MAX 470.0f
+#define DEFAULT_FREQUENCY 433.500f
+#else
+#error "Invalid LORA_BAND_NATIVE configuration!"
+#endif
+
+struct LoRaConfig {
+  float frequency;
+  uint8_t spreadingFactor;
+  float bandwidth;
+};
+
+extern LoRaConfig activeConfig;
 extern ESP32Time rtc;
 extern char logFileName[32];
 extern char dispStatus[32];
@@ -53,6 +82,10 @@ void SDCardDetection(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SPIClass* SDSPI,
 void checkSDCardSpace(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2);
 void writeFrameToFile(const char* filepath, const uint8_t* frame, size_t length, float rssi, float snr, const char* ssid_str, uint8_t apid);
 
+void loadLoRaConfig();
+void saveLoRaConfig();
+void resetLoRaConfig();
+
 void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio);
 size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, uint8_t* byteArr, size_t maxLen);
 void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio);
@@ -61,5 +94,8 @@ void RadioStartListen(SX1276 *radio);
 
 uint16_t calculate_crc16(const uint8_t *data, size_t len);
 void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const uint8_t *payload, size_t len);
+
+void checkSerialCommands(SX1276 *radio);
+void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio);
 
 #endif // HEADER_H
