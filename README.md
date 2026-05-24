@@ -1,5 +1,9 @@
 # RocketStation-LoRa32 (Récepteur NectarMC)
 
+<p align="center">
+  <img src="Image/IMG_1196.jpg" alt="Station sol TTGO LoRa32 affichant NECTAR" width="600" />
+</p>
+
 **RocketStation-LoRa32** est une station au sol de réception LoRa destinée à capter la télémétrie de fusées expérimentales et de ballons-sondes. Elle repose sur la carte de développement **LilyGO TTGO T3 V1.6.1 (LoRa32 V2.1.6)** équipée d'un microcontrôleur ESP32, d'un module radio SX1276 et d'un écran OLED intégré. Elle fonctionne à la fréquence de 869.525 MHz.
 
 Cette version du logiciel est optimisée pour être compatible avec le logiciel de traitement de télémétrie **NectarMC** en générant des trames binaires série conformes, en gérant dynamiquement les trackers et en enregistrant l'historique sur carte SD.
@@ -8,15 +12,17 @@ Cette version du logiciel est optimisée pour être compatible avec le logiciel 
 
 ## 📸 Aperçu du Matériel
 
-Voici les vues de la carte électronique et son brochage (Pinout) :
+Voici les vues de la carte de développement ainsi que son brochage (Pinout) et ses dimensions :
 
 <p align="center">
-  <img src="Image/LORA2-1_600x600.jpg" alt="LilyGO TTGO LoRa32 Board" width="300" />
+  <img src="Image/LORA2-1_600x600.jpg" alt="LilyGO TTGO LoRa32 Board Layout" width="300" />
   <img src="Image/PIN-DIAGRAM_4162b444-51eb-42ec-9e20-7ce3fedd2dc1_600x600.jpg" alt="Pinout Diagram" width="500" />
 </p>
 <p align="center">
   <img src="Image/P-SIZE_600x600.jpg" alt="Board Dimensions" width="400" />
 </p>
+
+👉 **[Télécharger la Fiche Technique et le Schéma PDF Officiel de la TTGO T3 V1.6.1](T3_V1.6.1.pdf)**
 
 ---
 
@@ -42,8 +48,8 @@ Pendant le fonctionnement, l'écran est structuré en deux parties :
 *   **Droite** : Horloge temps réel (RTC) comptant le temps écoulé depuis le démarrage (`HH:MM:SS`).
 
 <p align="center">
-  <img src="Image/DSC03022.JPG" alt="OLED Screen View 1" width="350" />
-  <img src="Image/DSC03024.JPG" alt="OLED Screen View 2" width="350" />
+  <img src="Image/IMG_1197.jpg" alt="Close-up OLED Screen View" width="350" />
+  <img src="Image/IMG_1198.jpg" alt="Board running with Nectar text on screen" width="350" />
 </p>
 
 ### 2. Rotation des Écrans Principaux (Alternance toutes les 4 secondes)
