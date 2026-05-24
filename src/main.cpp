@@ -1,11 +1,16 @@
 #include "header.h"
 
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C *u8g2 = nullptr;
-SPIClass *SDSPI = nullptr;
-bool *SDCard = nullptr;
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2Static(U8G2_R0, U8X8_PIN_NONE);
+SPIClass SDSPIStatic(HSPI);
+bool SDCardStatic = false;
+uint8_t byteArrStatic[MAX_FRAME_SIZE];
+
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C *u8g2 = &u8g2Static;
+SPIClass *SDSPI = &SDSPIStatic;
+bool *SDCard = &SDCardStatic;
 size_t receivedLen = 0;
 char logFileName[32] = "/log.csv";
-uint8_t *byteArr = nullptr;
+uint8_t *byteArr = byteArrStatic;
 SX1276 radio = new Module(RADIO_CS_PIN, RADIO_DIO0_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
 
 void setup() 
@@ -28,10 +33,6 @@ void setup()
   digitalWrite(BOARD_LED, LED_ON);
   pinMode(BATTERY_PIN, INPUT);
 
-  u8g2 = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C(U8G2_R0, U8X8_PIN_NONE);
-  SDSPI = new SPIClass(HSPI);
-  SDCard = new bool;
-  byteArr = new uint8_t[MAX_FRAME_SIZE];
   *SDCard = false;
   ScreenText(u8g2);
 

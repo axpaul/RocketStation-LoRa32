@@ -173,5 +173,8 @@ void writeFrameToFile(const char* filepath, const uint8_t* frame, size_t length,
 
     log.println();
     log.close();
-  } 
+  } else {
+    Serial.println("[SD] Error: Failed to open log file. SD card marked as OFFLINE.");
+    *SDCard = false;
+  }
 }

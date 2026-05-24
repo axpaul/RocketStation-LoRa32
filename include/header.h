@@ -44,6 +44,7 @@
 extern ESP32Time rtc;
 extern char logFileName[32];
 extern char dispStatus[32];
+extern bool *SDCard;
 
 float readBatteryVoltage();
 

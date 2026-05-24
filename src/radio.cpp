@@ -55,7 +55,7 @@ void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio){
     u8g2->clearBuffer();
     u8g2->drawStr(0, 12, "Initializing radio: FAIL!");
     u8g2->sendBuffer();
-    while (true);
+    while (true) { delay(100); }
   }
 
   if (state != RADIOLIB_ERR_NONE) {
@@ -63,7 +63,7 @@ void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio){
     u8g2->clearBuffer();
     u8g2->drawStr(0, 12, "Initializing radio: FAIL!");
     u8g2->sendBuffer();
-    while (1);    
+    while (true) { delay(100); }    
   }
 }
 
@@ -164,9 +164,10 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
     dispMode = (dispMode + 1) % 2;
   }
 
-  // Calcul du débit de données toutes les secondes
-  if (millis() - lastRateCalculation >= 1000) {
-    dataRateBps = bytesReceivedThisSecond;
+  // Calcul du débit de données toutes les secondes (normalisé au temps réel écoulé)
+  unsigned long elapsed = millis() - lastRateCalculation;
+  if (elapsed >= 1000) {
+    dataRateBps = (bytesReceivedThisSecond * 1000) / elapsed;
     bytesReceivedThisSecond = 0;
     lastRateCalculation = millis();
   }
