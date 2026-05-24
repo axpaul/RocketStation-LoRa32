@@ -111,6 +111,23 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
 
   int statusWidth = u8g2->getStrWidth(dispStatus);
   int availableSpace = clockX - statusWidth;
+
+  // Affichage de l'icône Bluetooth si connecté
+  int btSpace = 0;
+#if ENABLE_BLUETOOTH
+  if (SerialBT.connected()) {
+    btSpace = 12; // Espace réservé pour le logo Bluetooth
+    int bx = clockX - 8;
+    int by = 2;
+    u8g2->drawLine(bx, by, bx, by + 10);
+    u8g2->drawLine(bx - 3, by + 3, bx + 3, by + 7);
+    u8g2->drawLine(bx - 3, by + 7, bx + 3, by + 3);
+    u8g2->drawLine(bx + 3, by + 3, bx, by);
+    u8g2->drawLine(bx + 3, by + 7, bx, by + 10);
+  }
+#endif
+
+  availableSpace -= btSpace;
   int batTextWidth = u8g2->getStrWidth(batBuf);
   int batWidth = 13 + 4 + batTextWidth; // Icon (13px) + spacing (4px) + text width
 
