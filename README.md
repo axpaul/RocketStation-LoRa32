@@ -93,6 +93,52 @@ Les trames émises par la station sol vers le PC sur le port série USB sont lue
 
 ---
 
+## 🎮 Commandes de Configuration Interactive (Série / Bluetooth)
+
+La station sol dispose d'un décodeur de commandes ASCII interactif permettant de configurer la radio à chaud (en USB à **115200 bauds** ou via liaison Bluetooth sans fil via l'appareil **`Nectar-RxStation`**).
+
+Chaque commande doit se terminer par un retour chariot (`\n` ou `\r`). Les réponses sont renvoyées sur le même canal que celui d'où provient la commande.
+
+### 📋 Liste des commandes disponibles
+
+| Commande | Rôle | Plages / Exemples |
+| :--- | :--- | :--- |
+| **`SET FREQ <val>`** | Modifie la fréquence LoRa active (en MHz) | Ex: `SET FREQ 869.525` ou `SET FREQ 433.500`. (Doit respecter les limites physiques de la carte). |
+| **`SET SF <val>`** | Modifie le Spreading Factor (Facteur d'étalement) | De `6` à `12` (par défaut `8`). Ex: `SET SF 7`. |
+| **`SET BW <val>`** | Modifie la bande passante LoRa (en kHz) | Valeur supérieure à `0`. Ex: `SET BW 250.0`. |
+| **`GET CFG`** ou **`STATUS`** | Affiche la configuration active et les statistiques de la carte | Renvoie la version du firmware, la bande native configurée, la plage de fréquences autorisées, les réglages actifs et l'état de la SD et du Bluetooth. |
+| **`SAVE`** | Enregistre la configuration active dans la mémoire Flash permanente (NVS) | Les réglages seront ainsi automatiquement rechargés lors des prochains démarrages. |
+| **`RESET`** | Efface la mémoire de configuration personnalisée (NVS) et redémarre la carte | La carte se réinitialisera avec les paramètres d'usine par défaut. |
+
+### ⚠️ Gestion des erreurs et retours consoles
+
+En réponse à une commande, la station sol renvoie toujours un statut clair :
+
+* **Succès** :
+  * `OK: Frequency set to 869.525 MHz`
+  * `OK: Spreading Factor set to 7`
+  * `OK: Bandwidth set to 250.0 kHz`
+  * `OK: Configuration saved to NVS.`
+  * `OK: NVS config cleared. Rebooting device...`
+
+* **Erreurs de limites de fréquence (Bandes ISM protégées)** :
+  * Si la carte est flashée pour la bande 868 MHz (limites strictes : `863.0` à `870.0` MHz) et que vous demandez `SET FREQ 433.500` :
+    `ERROR: Frequency 433.500 out of native band limits [863.0 - 870.0] MHz`
+  * Si la carte est flashée pour la bande 433 MHz (limites strictes : `433.05` à `434.79` MHz) et que vous demandez `SET FREQ 869.525` :
+    `ERROR: Frequency 869.525 out of native band limits [433.05 - 434.79] MHz`
+
+* **Erreurs de paramètres invalides** :
+  * Si vous saisissez une valeur de SF hors limites (ex. `SET SF 5` ou `SET SF 13`) :
+    `ERROR: SF must be between 6 and 12`
+  * Si la bande passante saisie est incohérente (ex. `SET BW -5.0`) :
+    `ERROR: Bandwidth must be greater than 0`
+
+* **Erreur de commande inconnue** :
+  * Si la commande saisie est incorrecte (ex. `HELLO` ou `SET FREQ`) :
+    `ERROR: Unknown command '<votre_saisie>'`
+
+---
+
 ## 💾 Structure des logs (Carte SD)
 
 Les données sont enregistrées dans un fichier CSV avec la structure suivante :
