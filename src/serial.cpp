@@ -1,30 +1,45 @@
 #include "header.h"
 
-uint8_t calculate_crc8(uint8_t *data, size_t len) {
-    uint8_t crc = 0;
-    while (len--) {
-        uint8_t extract = *data++;
-        for (uint8_t tempI = 8; tempI; tempI--) {
-            uint8_t sum = (crc ^ extract) & 0x01;
-            crc >>= 1;
-            if (sum) {
-                crc ^= CRC8_DPOLY;
+uint16_t calculate_crc16(const uint8_t *data, size_t len) {
+    uint16_t crc = 0xFFFF;
+    for (size_t i = 0; i < len; ++i) {
+        crc ^= (data[i] << 8);
+        for (int j = 0; j < 8; ++j) {
+            if (crc & 0x8000) {
+                crc = (crc << 1) ^ 0x1021;
+            } else {
+                crc <<= 1;
             }
-            extract >>= 1;
         }
     }
     return crc;
 }
 
-void sendWithCRC(uint8_t *data, size_t len) {
-    // Calculer le CRC
-    uint8_t crc = calculate_crc8(data, len);
+void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const uint8_t *payload, size_t len) {
+    // 1. Calculer le SSID (10 bits) et l'Id_mission (16 bits)
+    uint16_t ssid = ((ssid_type & 0x03) << 8) | ssid_num;
+    uint16_t id_mission = (ssid << 6) | (apid & 0x3F);
 
-    // Envoyer le début de la trame, le CRC, les données, puis la fin de la trame
-    Serial.write(0xEE);  // Start of Header (SOH)
-    Serial.write(crc);   // Checksum
-    for (size_t i = 0; i < len; ++i) {
-        Serial.write(data[i]);  // Data
+    // 2. Préparer le Header NectarMC (4 octets)
+    uint8_t header[4];
+    header[0] = NECTAR_MAGIC;
+    header[1] = id_mission & 0xFF;         // Encodage en Little-Endian (partie basse)
+    header[2] = (id_mission >> 8) & 0xFF;  // Encodage en Little-Endian (partie haute)
+    header[3] = (uint8_t)(len & 0xFF);     // payload_size
+
+    // 3. Assembler l'en-tête et la payload dans un buffer temporaire pour le calcul du CRC
+    // La taille max de la payload NectarMC est 255. La trame fait au max 4 + 255 = 259 octets.
+    uint8_t frame[265];
+    memcpy(frame, header, 4);
+    if (len > 0 && payload != nullptr) {
+        memcpy(frame + 4, payload, len);
     }
-    Serial.write('\n');  // End of Transmission (EOT)
+
+    // 4. Calculer le CRC16 sur Header + Payload
+    uint16_t crc = calculate_crc16(frame, 4 + len);
+
+    // 5. Émettre la trame complète sur le port série
+    Serial.write(frame, 4 + len);
+    Serial.write(crc & 0xFF);         // CRC16 Little-Endian (partie basse)
+    Serial.write((crc >> 8) & 0xFF);  // CRC16 Little-Endian (partie haute)
 }
