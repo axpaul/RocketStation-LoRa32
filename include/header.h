@@ -52,12 +52,12 @@ extern BluetoothSerial SerialBT;
 #endif
 
 #if LORA_BAND_NATIVE == 868
-#define FREQ_MIN 860.0f
-#define FREQ_MAX 880.0f
+#define FREQ_MIN 863.0f
+#define FREQ_MAX 870.0f
 #define DEFAULT_FREQUENCY 869.525f
 #elif LORA_BAND_NATIVE == 433
-#define FREQ_MIN 410.0f
-#define FREQ_MAX 470.0f
+#define FREQ_MIN 433.05f
+#define FREQ_MAX 434.79f
 #define DEFAULT_FREQUENCY 433.500f
 #else
 #error "Invalid LORA_BAND_NATIVE configuration!"
