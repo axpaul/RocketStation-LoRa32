@@ -52,7 +52,7 @@ Les informations détaillées s'affichent sous forme de deux écrans alternant a
 
 | Écran 1 : Infos de la dernière trame | Écran 2 : Configuration & Stats réseau |
 | :---: | :---: |
-| <img src="Image/IMG_1197.jpg" width="220" style="transform: rotate(90deg); margin: 40px 0;" /> | <img src="Image/IMG_1198.jpg" width="220" style="transform: rotate(90deg); margin: 40px 0;" /> |
+| <img src="Image/IMG_1197.jpg" width="300" /> | <img src="Image/IMG_1198.jpg" width="300" /> |
 | **Dernier paquet reçu** : Affiche le SSID décodé, l'APID de l'émetteur, ainsi que le RSSI (dBm) et le SNR (dB) physiques du signal capté. | **Configuration & Débit** : Affiche la fréquence active, le Spreading Factor (SF), la bande passante (BW), le nombre de trackers actifs uniques et le débit de données instantané. |
 
 ---
