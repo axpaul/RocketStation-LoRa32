@@ -180,33 +180,46 @@ void writeFrameToFile(const char* filepath, const uint8_t* frame, size_t length,
   }
 }
 
+// Charge la configuration radio depuis la mémoire Flash non volatile (NVS) de l'ESP32
 void loadLoRaConfig() {
   Preferences prefs;
+  
+  // Ouvre l'espace NVS de nom "loracfg" en mode Lecture/Écriture (false = non-lecture seule)
   prefs.begin("loracfg", false);
+  
+  // Lit les clés. Si elles n'existent pas (1er démarrage), la valeur de secours par défaut est renvoyée
   activeConfig.frequency = prefs.getFloat("freq", DEFAULT_FREQUENCY);
   activeConfig.spreadingFactor = prefs.getUChar("sf", 8);
   activeConfig.bandwidth = prefs.getFloat("bw", 250.0f);
-  prefs.end();
+  
+  prefs.end(); // Ferme proprement l'accès NVS
   
   Serial.printf("[CONFIG] Loaded from NVS: Freq=%.3f MHz, SF=%d, BW=%.1f kHz\n", 
                 activeConfig.frequency, activeConfig.spreadingFactor, activeConfig.bandwidth);
 }
 
+// Enregistre les réglages actifs dans la mémoire Flash non volatile (NVS)
 void saveLoRaConfig() {
   Preferences prefs;
   prefs.begin("loracfg", false);
+  
+  // Écrit les clés / valeurs
   prefs.putFloat("freq", activeConfig.frequency);
   prefs.putUChar("sf", activeConfig.spreadingFactor);
   prefs.putFloat("bw", activeConfig.bandwidth);
+  
   prefs.end();
   
   Serial.println("[CONFIG] Saved current config to NVS.");
 }
 
+// Efface tous les enregistrements NVS sous le nom "loracfg" pour revenir aux valeurs usines
 void resetLoRaConfig() {
   Preferences prefs;
   prefs.begin("loracfg", false);
-  prefs.clear();
+  
+  prefs.clear(); // Efface toutes les clés de ce namespace
+  
   prefs.end();
   
   Serial.println("[CONFIG] NVS configuration cleared.");

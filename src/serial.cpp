@@ -53,7 +53,9 @@ void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const ui
     Serial.write((crc >> 8) & 0xFF);  // CRC16 Little-Endian (partie haute)
 
 #if ENABLE_BLUETOOTH
-    // 7. Émettre également en Bluetooth si connecté
+    // 7. Émettre également en Bluetooth si un appareil (PC/téléphone) est connecté.
+    // SerialBT fonctionne de la même manière que Serial, les paquets binaires NectarMC
+    // y sont écrits séquentiellement.
     if (SerialBT.connected()) {
         SerialBT.write(frame, 4 + len);
         SerialBT.write(crc & 0xFF);

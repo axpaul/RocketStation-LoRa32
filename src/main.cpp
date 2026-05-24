@@ -107,62 +107,75 @@ void loop() {
   }
 }
 
+// Cette fonction écoute et accumule les caractères reçus sur les ports série (USB et Bluetooth)
+// pour assembler des lignes complètes de commandes.
 void checkSerialCommands(SX1276 *radio) {
+  // Les variables 'static' conservent leur état entre chaque appel de loop()
   static char serialBuf[64];
   static size_t serialIdx = 0;
   
+  // Lecture du port série USB
   while (Serial.available() > 0) {
     char c = Serial.read();
-    if (c == '\n' || c == '\r') {
+    if (c == '\n' || c == '\r') { // Fin de ligne détectée : on traite la commande
       if (serialIdx > 0) {
-        serialBuf[serialIdx] = '\0';
-        handleConfigCommand(serialBuf, Serial, radio);
-        serialIdx = 0;
+        serialBuf[serialIdx] = '\0'; // Ajout du caractère de fin de chaîne
+        handleConfigCommand(serialBuf, Serial, radio); // Traitement et réponse sur le port USB
+        serialIdx = 0; // Réinitialisation de l'index du buffer
       }
     } else if (serialIdx < sizeof(serialBuf) - 1) {
-      serialBuf[serialIdx++] = c;
+      serialBuf[serialIdx++] = c; // Accumulation du caractère
     }
   }
 
 #if ENABLE_BLUETOOTH
+  // Même logique pour la connexion Bluetooth Serial
   static char btBuf[64];
   static size_t btIdx = 0;
   
   while (SerialBT.available() > 0) {
     char c = SerialBT.read();
-    if (c == '\n' || c == '\r') {
+    if (c == '\n' || c == '\r') { // Fin de ligne détectée : on traite la commande
       if (btIdx > 0) {
-        btBuf[btIdx] = '\0';
-        handleConfigCommand(btBuf, SerialBT, radio);
-        btIdx = 0;
+        btBuf[btIdx] = '\0'; // Fin de chaîne
+        handleConfigCommand(btBuf, SerialBT, radio); // Traitement et réponse sur la liaison Bluetooth
+        btIdx = 0; // Réinitialisation de l'index
       }
     } else if (btIdx < sizeof(btBuf) - 1) {
-      btBuf[btIdx++] = c;
+      btBuf[btIdx++] = c; // Accumulation
     }
   }
 #endif
 }
 
+// Cette fonction décode et exécute la commande reçue, puis renvoie le résultat 
+// sur le flux de communication concerné (USB Serial ou Bluetooth SerialBT).
 void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio) {
+  
+  // Commande "SET FREQ <valeur>" : Modifie la fréquence radio active
   if (strncmp(cmd, "SET FREQ ", 9) == 0) {
-    float val = atof(cmd + 9);
+    float val = atof(cmd + 9); // Récupère la valeur numérique en virgule flottante
+    // Vérification des limites physiques de la carte (868 ou 433) définies dans header.h
     if (val >= FREQ_MIN && val <= FREQ_MAX) {
       activeConfig.frequency = val;
-      int state = radio->setFrequency(val);
+      int state = radio->setFrequency(val); // Applique le changement à chaud sur le module SX1276
       if (state == RADIOLIB_ERR_NONE) {
         responseStream.printf("OK: Frequency set to %.3f MHz\n", val);
       } else {
         responseStream.printf("ERROR: Failed to set frequency, code %d\n", state);
       }
     } else {
+      // Rejet de la commande si hors limites physiques de l'antenne / de la bande native
       responseStream.printf("ERROR: Frequency %.3f out of native band limits [%.1f - %.1f] MHz\n", val, FREQ_MIN, FREQ_MAX);
     }
   }
+  
+  // Commande "SET SF <valeur>" : Modifie le Spreading Factor (Facteur d'étalement LoRa)
   else if (strncmp(cmd, "SET SF ", 7) == 0) {
-    int val = atoi(cmd + 7);
-    if (val >= 6 && val <= 12) {
+    int val = atoi(cmd + 7); // Récupère la valeur entière
+    if (val >= 6 && val <= 12) { // Limite légale standard pour LoRa
       activeConfig.spreadingFactor = val;
-      int state = radio->setSpreadingFactor(val);
+      int state = radio->setSpreadingFactor(val); // Applique le changement à chaud
       if (state == RADIOLIB_ERR_NONE) {
         responseStream.printf("OK: Spreading Factor set to %d\n", val);
       } else {
@@ -172,11 +185,13 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
       responseStream.println("ERROR: SF must be between 6 and 12");
     }
   }
+  
+  // Commande "SET BW <valeur>" : Modifie la Bande Passante LoRa (en kHz)
   else if (strncmp(cmd, "SET BW ", 7) == 0) {
     float val = atof(cmd + 7);
     if (val > 0.0f) {
       activeConfig.bandwidth = val;
-      int state = radio->setBandwidth(val);
+      int state = radio->setBandwidth(val); // Applique le changement de bande passante à chaud
       if (state == RADIOLIB_ERR_NONE) {
         responseStream.printf("OK: Bandwidth set to %.1f kHz\n", val);
       } else {
@@ -186,6 +201,8 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
       responseStream.println("ERROR: Bandwidth must be greater than 0");
     }
   }
+  
+  // Commande "GET CFG" ou "STATUS" : Affiche l'état complet et les limites
   else if (strcmp(cmd, "GET CFG") == 0 || strcmp(cmd, "STATUS") == 0) {
     responseStream.println("--- RocketStation Configuration ---");
     responseStream.printf("Firmware Version  : %s\n", FW_VERSION);
@@ -200,16 +217,22 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
 #endif
     responseStream.println("-----------------------------------");
   }
+  
+  // Commande "SAVE" : Enregistre la configuration active dans la mémoire Flash NVS
   else if (strcmp(cmd, "SAVE") == 0) {
-    saveLoRaConfig();
+    saveLoRaConfig(); // Enregistrement permanent
     responseStream.println("OK: Configuration saved to NVS.");
   }
+  
+  // Commande "RESET" : Efface la configuration personnalisée NVS et redémarre l'ESP32
   else if (strcmp(cmd, "RESET") == 0) {
-    resetLoRaConfig();
+    resetLoRaConfig(); // Efface la mémoire
     responseStream.println("OK: NVS config cleared. Rebooting device...");
     delay(1000);
-    ESP.restart();
+    ESP.restart(); // Redémarrage matériel
   }
+  
+  // Cas d'erreur pour les commandes non reconnues
   else {
     responseStream.printf("ERROR: Unknown command '%s'\n", cmd);
   }
