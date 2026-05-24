@@ -18,8 +18,7 @@ Voici les vues de la carte de développement ainsi que son brochage (Pinout) et 
   <img src="Image/PIN-DIAGRAM_4162b444-51eb-42ec-9e20-7ce3fedd2dc1_600x600.jpg" alt="Pinout Diagram" width="500" />
 </p>
 <p align="center">
-  <img src="Image/P-SIZE_600x600.jpg" alt="Board Dimensions" width="400" />
-  <img src="Image/LORA2-1_600x600.jpg" alt="LilyGO TTGO LoRa32 Board Layout" width="300" />
+  <img src="Image/P-SIZE_600x600.jpg" alt="Board Dimensions" width="500" />
 </p>
 
 👉 **[Télécharger la Fiche Technique et le Schéma PDF Officiel de la TTGO T3 V1.6.1](T3_V1.6.1.pdf)**
