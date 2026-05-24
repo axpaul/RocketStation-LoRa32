@@ -1,10 +1,10 @@
 # RocketStation-LoRa32 (Récepteur NectarMC)
 
+**RocketStation-LoRa32** est une station au sol de réception LoRa destinée à capter la télémétrie de fusées expérimentales et de ballons-sondes. Elle repose sur la carte de développement **LilyGO TTGO T3 V1.6.1 (LoRa32 V2.1.6)** équipée d'un microcontrôleur ESP32, d'un module radio SX1276 et d'un écran OLED intégré. Elle fonctionne à la fréquence de 869.525 MHz.
+
 <p align="center">
   <img src="Image/DSC03016.JPG" alt="Station sol TTGO LoRa32 affichant NECTAR" width="800" />
 </p>
-
-**RocketStation-LoRa32** est une station au sol de réception LoRa destinée à capter la télémétrie de fusées expérimentales et de ballons-sondes. Elle repose sur la carte de développement **LilyGO TTGO T3 V1.6.1 (LoRa32 V2.1.6)** équipée d'un microcontrôleur ESP32, d'un module radio SX1276 et d'un écran OLED intégré. Elle fonctionne à la fréquence de 869.525 MHz.
 
 Cette version du logiciel est optimisée pour être compatible avec le logiciel de traitement de télémétrie **NectarMC** en générant des trames binaires série conformes, en gérant dynamiquement les trackers et en enregistrant l'historique sur carte SD.
 
