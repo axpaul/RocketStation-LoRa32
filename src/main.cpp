@@ -19,15 +19,18 @@ void setup()
   Serial.begin(115200);
   delay(100); // Give serial monitor time to connect
 
+  uint8_t mac[6];
+  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+
   loadLoRaConfig();
 
 #if ENABLE_BLUETOOTH
-  SerialBT.begin("Nectar-RxStation");
-  Serial.println("[SYSTEM] Bluetooth Serial started: 'Nectar-RxStation'");
+  char btName[32];
+  snprintf(btName, sizeof(btName), "Nectar-RxStation-%02X%02X", mac[4], mac[5]);
+  SerialBT.begin(btName);
+  Serial.printf("[SYSTEM] Bluetooth Serial started: '%s'\n", btName);
 #endif
 
-  uint8_t mac[6];
-  esp_read_mac(mac, ESP_MAC_WIFI_STA);
   Serial.println("\n=========================================");
   Serial.printf("[SYSTEM] Firmware Version: %s\n", FW_VERSION);
   Serial.printf("[SYSTEM] Station ID (MAC): %02X:%02X:%02X:%02X:%02X:%02X\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
