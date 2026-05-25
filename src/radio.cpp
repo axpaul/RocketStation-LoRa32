@@ -4,7 +4,7 @@ volatile bool receivedFlag = false;
 volatile bool enableInterrupt = true;
 ESP32Time rtc;
 
-char dispStatus[32] = "RX: 0";
+char dispStatus[32] = "RX:0";
 static uint32_t rxCount = 0;
 static uint32_t errCount = 0;
 char dispSsidApid[32] = "No Frame";
@@ -85,7 +85,7 @@ float readBatteryVoltage() {
 
 void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
   u8g2->clearBuffer();
-  u8g2->setFont(u8g2_font_5x7_tr); // Police compacte 5x7 pour l'en-tête pour garantir l'espace
+  u8g2->setFont(u8g2_font_ncenB08_tr); // Police principale grasse d'origine
 
   char buf[64];
   char timeBuf[16];
@@ -112,69 +112,68 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
   int statusWidth = u8g2->getStrWidth(dispStatus);
   int availableSpace = clockX - statusWidth;
 
-  // Affichage de l'icône Bluetooth si connecté
+  // Affichage de l'icône Bluetooth si connecté (prioritaire sur la tension)
   int btSpace = 0;
 #if ENABLE_BLUETOOTH
   if (SerialBT.connected()) {
-    btSpace = 8; // Espace réservé pour le logo Bluetooth compact
+    btSpace = 10; // Espace réservé pour le logo Bluetooth (7px + 3px espacement)
     int bx = clockX - 6;
-    int by = 3;
-    // Rune Bluetooth compacte (5px de large, 9px de haut)
-    u8g2->drawLine(bx, by, bx, by + 8);
-    u8g2->drawLine(bx - 2, by + 2, bx + 2, by + 6);
-    u8g2->drawLine(bx - 2, by + 6, bx + 2, by + 2);
-    u8g2->drawLine(bx + 2, by + 2, bx, by);
-    u8g2->drawLine(bx + 2, by + 6, bx, by + 8);
+    int by = 2;
+    u8g2->drawLine(bx, by, bx, by + 10);
+    u8g2->drawLine(bx - 3, by + 3, bx + 3, by + 7);
+    u8g2->drawLine(bx - 3, by + 7, bx + 3, by + 3);
+    u8g2->drawLine(bx + 3, by + 3, bx, by);
+    u8g2->drawLine(bx + 3, by + 7, bx, by + 10);
   }
 #endif
 
   availableSpace -= btSpace;
   int batTextWidth = u8g2->getStrWidth(batBuf);
-  int batWidth = 13 + 3 + batTextWidth; // Icône (13px) + espacement (3px) + largeur texte
+  int batWidth = 11 + 2 + batTextWidth; // Icône compacte (11px) + espacement (2px) + largeur texte
 
   if (availableSpace >= batWidth) {
     // Affiche l'icône de batterie ET le texte (tension / USB)
     int blockX = statusWidth + (availableSpace - batWidth) / 2;
     
-    // Dessine l'icône de batterie
-    u8g2->drawFrame(blockX, 5, 12, 6);
-    u8g2->drawBox(blockX + 12, 7, 1, 2);
+    // Dessine l'icône de batterie compacte
+    u8g2->drawFrame(blockX, 5, 10, 6);
+    u8g2->drawBox(blockX + 10, 7, 1, 2);
     
     if (!isUsb) {
       int pct = (int)((vbat - 3.2) * 100.0);
       if (pct < 0) pct = 0;
       if (pct > 100) pct = 100;
-      int fillWidth = (pct * 10) / 100;
+      int fillWidth = (pct * 8) / 100;
       if (fillWidth > 0) {
         u8g2->drawBox(blockX + 1, 6, fillWidth, 4);
       }
     } else {
-      u8g2->drawBox(blockX + 1, 6, 10, 4);
+      u8g2->drawBox(blockX + 1, 6, 8, 4);
     }
     
-    // Affiche le texte de la batterie (aligné verticalement avec la police 5x7)
-    u8g2->drawStr(blockX + 13 + 3, 11, batBuf);
+    // Affiche le texte de la tension
+    u8g2->drawStr(blockX + 11 + 2, 12, batBuf);
   }
   else if (availableSpace >= 15) {
     // Affiche uniquement l'icône de batterie pour éviter le chevauchement
-    int blockX = statusWidth + (availableSpace - 13) / 2;
-    u8g2->drawFrame(blockX, 5, 12, 6);
-    u8g2->drawBox(blockX + 12, 7, 1, 2);
+    int blockX = statusWidth + (availableSpace - 11) / 2;
+    u8g2->drawFrame(blockX, 5, 10, 6);
+    u8g2->drawBox(blockX + 10, 7, 1, 2);
     if (!isUsb) {
       int pct = (int)((vbat - 3.2) * 100.0);
       if (pct < 0) pct = 0;
       if (pct > 100) pct = 100;
-      int fillWidth = (pct * 10) / 100;
+      int fillWidth = (pct * 8) / 100;
       if (fillWidth > 0) {
         u8g2->drawBox(blockX + 1, 6, fillWidth, 4);
       }
     } else {
-      u8g2->drawBox(blockX + 1, 6, 10, 4);
+      u8g2->drawBox(blockX + 1, 6, 8, 4);
     }
   }
 
   u8g2->drawHLine(0, 15, 128);
-  u8g2->setFont(u8g2_font_ncenB08_tr); // Restaurer la police principale pour le corps de l'écran
+  u8g2->setFont(u8g2_font_ncenB08_tr); // S'assurer que le reste de l'écran utilise la police grasse
 
   // Gérer la rotation des écrans toutes les 4 secondes
   if (millis() - lastModeChange >= 4000) {
@@ -253,10 +252,13 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
 
     if (state == RADIOLIB_ERR_NONE) {
       rxCount++;
+      // Formatage compact sans espace et limitation à 3 chiffres (0-999) pour conserver de l'espace
+      uint32_t dispRx = rxCount % 1000;
+      uint32_t dispErr = errCount % 1000;
       if (errCount == 0) {
-        snprintf(dispStatus, sizeof(dispStatus), "RX: %d", rxCount);
+        snprintf(dispStatus, sizeof(dispStatus), "RX:%d", dispRx);
       } else {
-        snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount, errCount);
+        snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", dispRx, dispErr);
       }
       
       // Décode le SSID et l'APID de la trame
@@ -295,7 +297,7 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
     }
     else if (state == RADIOLIB_ERR_CRC_MISMATCH) {
       errCount++;
-      snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount, errCount);
+      snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
       dispRssi = radio->getRSSI();
       dispSnr = radio->getSNR();
       
@@ -306,7 +308,7 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
     } 
     else {
       errCount++;
-      snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount, errCount);
+      snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
       dispRssi = radio->getRSSI();
       dispSnr = radio->getSNR();
       
