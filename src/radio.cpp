@@ -85,7 +85,7 @@ float readBatteryVoltage() {
 
 void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
   u8g2->clearBuffer();
-  u8g2->setFont(u8g2_font_ncenB08_tr);
+  u8g2->setFont(u8g2_font_5x7_tr); // Police compacte 5x7 pour l'en-tête pour garantir l'espace
 
   char buf[64];
   char timeBuf[16];
@@ -93,13 +93,13 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
   // Ligne 1 : Statut et Horloge en temps réel (toujours visible)
   u8g2->drawStr(0, 12, dispStatus);
   
-  // Real-time clock aligned to the right
+  // Horloge en temps réel alignée à droite
   snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", rtc.getHour(true), rtc.getMinute(), rtc.getSecond());
   int clockWidth = u8g2->getStrWidth(timeBuf);
   int clockX = 128 - clockWidth;
   u8g2->drawStr(clockX, 12, timeBuf);
 
-  // Dynamic battery info display centered in the header
+  // Calcul dynamique des informations de batterie
   float vbat = readBatteryVoltage();
   char batBuf[16] = "";
   bool isUsb = (vbat > 4.4);
@@ -116,26 +116,27 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
   int btSpace = 0;
 #if ENABLE_BLUETOOTH
   if (SerialBT.connected()) {
-    btSpace = 12; // Espace réservé pour le logo Bluetooth
-    int bx = clockX - 8;
-    int by = 2;
-    u8g2->drawLine(bx, by, bx, by + 10);
-    u8g2->drawLine(bx - 3, by + 3, bx + 3, by + 7);
-    u8g2->drawLine(bx - 3, by + 7, bx + 3, by + 3);
-    u8g2->drawLine(bx + 3, by + 3, bx, by);
-    u8g2->drawLine(bx + 3, by + 7, bx, by + 10);
+    btSpace = 8; // Espace réservé pour le logo Bluetooth compact
+    int bx = clockX - 6;
+    int by = 3;
+    // Rune Bluetooth compacte (5px de large, 9px de haut)
+    u8g2->drawLine(bx, by, bx, by + 8);
+    u8g2->drawLine(bx - 2, by + 2, bx + 2, by + 6);
+    u8g2->drawLine(bx - 2, by + 6, bx + 2, by + 2);
+    u8g2->drawLine(bx + 2, by + 2, bx, by);
+    u8g2->drawLine(bx + 2, by + 6, bx, by + 8);
   }
 #endif
 
   availableSpace -= btSpace;
   int batTextWidth = u8g2->getStrWidth(batBuf);
-  int batWidth = 13 + 4 + batTextWidth; // Icon (13px) + spacing (4px) + text width
+  int batWidth = 13 + 3 + batTextWidth; // Icône (13px) + espacement (3px) + largeur texte
 
-  if (availableSpace >= batWidth + 10) {
-    // Show both the battery icon and the voltage / USB text
+  if (availableSpace >= batWidth) {
+    // Affiche l'icône de batterie ET le texte (tension / USB)
     int blockX = statusWidth + (availableSpace - batWidth) / 2;
     
-    // Draw battery outline & tip
+    // Dessine l'icône de batterie
     u8g2->drawFrame(blockX, 5, 12, 6);
     u8g2->drawBox(blockX + 12, 7, 1, 2);
     
@@ -148,15 +149,14 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
         u8g2->drawBox(blockX + 1, 6, fillWidth, 4);
       }
     } else {
-      // Full fill when on USB power
       u8g2->drawBox(blockX + 1, 6, 10, 4);
     }
     
-    // Print battery voltage/USB text
-    u8g2->drawStr(blockX + 13 + 4, 12, batBuf);
+    // Affiche le texte de la batterie (aligné verticalement avec la police 5x7)
+    u8g2->drawStr(blockX + 13 + 3, 11, batBuf);
   }
-  else if (availableSpace >= 20) {
-    // Show battery icon only to prevent overlap
+  else if (availableSpace >= 15) {
+    // Affiche uniquement l'icône de batterie pour éviter le chevauchement
     int blockX = statusWidth + (availableSpace - 13) / 2;
     u8g2->drawFrame(blockX, 5, 12, 6);
     u8g2->drawBox(blockX + 12, 7, 1, 2);
@@ -174,6 +174,7 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
   }
 
   u8g2->drawHLine(0, 15, 128);
+  u8g2->setFont(u8g2_font_ncenB08_tr); // Restaurer la police principale pour le corps de l'écran
 
   // Gérer la rotation des écrans toutes les 4 secondes
   if (millis() - lastModeChange >= 4000) {
