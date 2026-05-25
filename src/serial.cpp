@@ -51,6 +51,7 @@ void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const ui
     Serial.write(frame, 4 + len);
     Serial.write(crc & 0xFF);         // CRC16 Little-Endian (partie basse)
     Serial.write((crc >> 8) & 0xFF);  // CRC16 Little-Endian (partie haute)
+    Serial.write('\n');               // Retour chariot pour faciliter la lecture/log dans un terminal série
 
 #if ENABLE_BLUETOOTH
     // 7. Émettre également en Bluetooth si un appareil (PC/téléphone) est connecté.
@@ -60,6 +61,7 @@ void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const ui
         SerialBT.write(frame, 4 + len);
         SerialBT.write(crc & 0xFF);
         SerialBT.write((crc >> 8) & 0xFF);
+        SerialBT.write('\n');         // Retour chariot pour la liaison Bluetooth
     }
 #endif
 }
