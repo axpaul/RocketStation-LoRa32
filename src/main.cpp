@@ -151,62 +151,84 @@ void checkSerialCommands(SX1276 *radio) {
 #endif
 }
 
-// Cette fonction décode et exécute la commande reçue, puis renvoie le résultat 
+// Cette fonction décode et exécute la commande reçue au format AT, puis renvoie le résultat 
 // sur le flux de communication concerné (USB Serial ou Bluetooth SerialBT).
 void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio) {
-  
-  // Commande "SET FREQ <valeur>" : Modifie la fréquence radio active
-  if (strncmp(cmd, "SET FREQ ", 9) == 0) {
-    float val = atof(cmd + 9); // Récupère la valeur numérique en virgule flottante
-    // Vérification des limites physiques de la carte (868 ou 433) définies dans header.h
+  // Les commandes doivent obligatoirement commencer par "AT" pour éviter tout conflit avec d'autres données
+  if (strncmp(cmd, "AT", 2) != 0) {
+    return; // Ignore silencieusement
+  }
+
+  // Commande de test simple "AT"
+  if (strcmp(cmd, "AT") == 0) {
+    responseStream.println("OK");
+    return;
+  }
+
+  // Commande "AT+FREQ=<mhz>" ou "AT+FREQ?"
+  if (strncmp(cmd, "AT+FREQ=", 8) == 0) {
+    float val = atof(cmd + 8); // Récupère la valeur en MHz
+    // Vérification des limites physiques de la carte (868 ou 433)
     if (val >= FREQ_MIN && val <= FREQ_MAX) {
       activeConfig.frequency = val;
-      int state = radio->setFrequency(val); // Applique le changement à chaud sur le module SX1276
+      int state = radio->setFrequency(val); // Applique à chaud sur le SX1276
       if (state == RADIOLIB_ERR_NONE) {
-        responseStream.printf("OK: Frequency set to %.3f MHz\n", val);
+        responseStream.println("OK");
       } else {
-        responseStream.printf("ERROR: Failed to set frequency, code %d\n", state);
+        responseStream.printf("ERROR: %d\n", state);
       }
     } else {
-      // Rejet de la commande si hors limites physiques de l'antenne / de la bande native
-      responseStream.printf("ERROR: Frequency %.3f out of native band limits [%.1f - %.1f] MHz\n", val, FREQ_MIN, FREQ_MAX);
+      // Rejet si hors limites physiques
+      responseStream.printf("ERROR: Out of limits [%.1f - %.1f] MHz\n", FREQ_MIN, FREQ_MAX);
     }
+  } 
+  else if (strcmp(cmd, "AT+FREQ?") == 0) {
+    responseStream.printf("+FREQ: %.3f\n", activeConfig.frequency);
+    responseStream.println("OK");
   }
-  
-  // Commande "SET SF <valeur>" : Modifie le Spreading Factor (Facteur d'étalement LoRa)
-  else if (strncmp(cmd, "SET SF ", 7) == 0) {
-    int val = atoi(cmd + 7); // Récupère la valeur entière
-    if (val >= 6 && val <= 12) { // Limite légale standard pour LoRa
+
+  // Commande "AT+SF=<6-12>" ou "AT+SF?"
+  else if (strncmp(cmd, "AT+SF=", 6) == 0) {
+    int val = atoi(cmd + 6);
+    if (val >= 6 && val <= 12) {
       activeConfig.spreadingFactor = val;
-      int state = radio->setSpreadingFactor(val); // Applique le changement à chaud
+      int state = radio->setSpreadingFactor(val); // Applique à chaud
       if (state == RADIOLIB_ERR_NONE) {
-        responseStream.printf("OK: Spreading Factor set to %d\n", val);
+        responseStream.println("OK");
       } else {
-        responseStream.printf("ERROR: Failed to set SF, code %d\n", state);
+        responseStream.printf("ERROR: %d\n", state);
       }
     } else {
       responseStream.println("ERROR: SF must be between 6 and 12");
     }
+  } 
+  else if (strcmp(cmd, "AT+SF?") == 0) {
+    responseStream.printf("+SF: %d\n", activeConfig.spreadingFactor);
+    responseStream.println("OK");
   }
-  
-  // Commande "SET BW <valeur>" : Modifie la Bande Passante LoRa (en kHz)
-  else if (strncmp(cmd, "SET BW ", 7) == 0) {
-    float val = atof(cmd + 7);
+
+  // Commande "AT+BW=<khz>" ou "AT+BW?"
+  else if (strncmp(cmd, "AT+BW=", 6) == 0) {
+    float val = atof(cmd + 6);
     if (val > 0.0f) {
       activeConfig.bandwidth = val;
-      int state = radio->setBandwidth(val); // Applique le changement de bande passante à chaud
+      int state = radio->setBandwidth(val); // Applique à chaud
       if (state == RADIOLIB_ERR_NONE) {
-        responseStream.printf("OK: Bandwidth set to %.1f kHz\n", val);
+        responseStream.println("OK");
       } else {
-        responseStream.printf("ERROR: Failed to set BW, code %d\n", state);
+        responseStream.printf("ERROR: %d\n", state);
       }
     } else {
       responseStream.println("ERROR: Bandwidth must be greater than 0");
     }
+  } 
+  else if (strcmp(cmd, "AT+BW?") == 0) {
+    responseStream.printf("+BW: %.1f\n", activeConfig.bandwidth);
+    responseStream.println("OK");
   }
-  
-  // Commande "GET CFG" ou "STATUS" : Affiche l'état complet et les limites
-  else if (strcmp(cmd, "GET CFG") == 0 || strcmp(cmd, "STATUS") == 0) {
+
+  // Commande "AT+CFG" ou "AT+STATUS" : Affiche l'état complet
+  else if (strcmp(cmd, "AT+CFG") == 0 || strcmp(cmd, "AT+STATUS") == 0) {
     responseStream.println("--- RocketStation Configuration ---");
     responseStream.printf("Firmware Version  : %s\n", FW_VERSION);
     responseStream.printf("Native Band Limit : %d MHz\n", LORA_BAND_NATIVE);
@@ -219,24 +241,25 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
     responseStream.printf("Bluetooth Client  : %s\n", SerialBT.connected() ? "Connected" : "Disconnected");
 #endif
     responseStream.println("-----------------------------------");
+    responseStream.println("OK");
   }
-  
-  // Commande "SAVE" : Enregistre la configuration active dans la mémoire Flash NVS
-  else if (strcmp(cmd, "SAVE") == 0) {
+
+  // Commande "AT+SAVE" : Enregistre dans la NVS
+  else if (strcmp(cmd, "AT+SAVE") == 0) {
     saveLoRaConfig(); // Enregistrement permanent
-    responseStream.println("OK: Configuration saved to NVS.");
+    responseStream.println("OK");
   }
-  
-  // Commande "RESET" : Efface la configuration personnalisée NVS et redémarre l'ESP32
-  else if (strcmp(cmd, "RESET") == 0) {
-    resetLoRaConfig(); // Efface la mémoire
-    responseStream.println("OK: NVS config cleared. Rebooting device...");
+
+  // Commande "AT+RESET" : Supprime la config NVS et redémarre la carte
+  else if (strcmp(cmd, "AT+RESET") == 0) {
+    resetLoRaConfig();
+    responseStream.println("OK");
     delay(1000);
     ESP.restart(); // Redémarrage matériel
   }
-  
-  // Cas d'erreur pour les commandes non reconnues
+
+  // Cas d'erreur pour les commandes AT non reconnues
   else {
-    responseStream.printf("ERROR: Unknown command '%s'\n", cmd);
+    responseStream.printf("ERROR: Unknown AT command '%s'\n", cmd);
   }
 }
