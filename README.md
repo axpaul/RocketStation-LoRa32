@@ -95,7 +95,7 @@ Les trames émises par la station sol vers le PC sur le port série USB sont lue
 
 ## 🎮 Commandes de Configuration AT Interactives (Série / Bluetooth)
 
-La station sol dispose d'un décodeur de commandes AT standard permettant de configurer la radio à chaud (en USB à **115200 bauds** ou sans fil via Bluetooth avec l'appareil **`Nectar-RxStation-XXXX`**).
+La station sol dispose d'un décodeur de commandes AT standard permettant de configurer la radio à chaud (en USB à **115200 bauds** ou sans fil via liaison **Bluetooth Classic (SPP)** avec l'appareil **`Nectar-RxStation-XXXX`**).
 
 Chaque commande doit se terminer par un retour chariot (`\n` ou `\r`). Les réponses sont renvoyées sur le même canal que celui d'où provient la commande.
 
@@ -158,6 +158,12 @@ En ligne de commande :
 ```powershell
 pio run -t upload
 ```
+
+---
+
+## 🚀 Évolutions Futures (Roadmap)
+
+*   **Compatibilité BLE (Bluetooth Low Energy)** : Remplacement ou double support du Bluetooth Classic par le BLE pour réduire considérablement la consommation d'énergie de la station sol, et assurer une compatibilité native et immédiate avec les appareils iOS (iPhones/iPads).
 
 ---
 
