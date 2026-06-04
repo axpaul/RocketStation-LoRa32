@@ -146,17 +146,27 @@ Exemple de ligne de log :
 
 ---
 
-## 🏗️ Architecture Logicielle (Software Architecture)
+## Architecture Logicielle
 
-Le micrologiciel de la station de réception est conçu avec une structure modulaire en C++ afin de séparer clairement les responsabilités (entrées/sorties, affichage, stockage, communication sans fil) et d'assurer une exécution robuste et sans blocage des tâches critiques de réception radio.
+Le micrologiciel du récepteur est conçu avec une structure modulaire en C++ afin de séparer les responsabilités (entrées/sorties, affichage, stockage, communication sans fil) et d'assurer une exécution robuste et sans blocage des tâches critiques de réception radio.
 
-### 🧩 Description des Modules (Module Breakdown)
+```mermaid
+graph TD
+    Main[main.cpp <br/> Orchestrateur] -->|Initialise et cadence| Radio[radio.cpp <br/> Gestion Radio & OLED]
+    Main -->|Charge/Sauvegarde Config| Func[function.cpp <br/> Mémoire NVS, SD & IHM]
+    Radio -->|Achemine les paquets| Serial[serial.cpp <br/> Calcul CRC16 & Format NectarMC]
+    Radio -->|Rafraîchit| OLED[Ecran OLED <br/> Statuts & Écrans de Télémétrie]
+    Main -->|Enregistre les données| SD[function.cpp <br/> Journalisation CSV sur SD]
+    Serial -->|Transmet les trames| Output[USB Série & Bluetooth SerialBT]
+```
 
-*   **[main.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/main.cpp) (Orchestrateur)** : Le point d'entrée principal. Il initialise les différents composants système dans `setup()` (port USB, Bluetooth Classic, configuration radio, carte SD) et gère l'exécution des tâches dans `loop()` (lecture périodique des commandes AT entrantes et mise à jour de l'affichage OLED toutes les secondes).
+### Description des Modules
+
+*   **[main.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/main.cpp) (Orchestrateur)** : Point d'entrée principal. Il initialise les composants système dans `setup()` (port USB, Bluetooth Classic, configuration radio, carte SD) et gère l'exécution des tâches dans `loop()` (lecture périodique des commandes AT entrantes et mise à jour de l'affichage OLED toutes les secondes).
 *   **[radio.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/radio.cpp) (Gestion Radio & OLED)** : Configure le module radio SX1276 (via RadioLib), traite la réception asynchrone des trames LoRa (sécurisée par interruption matérielle via `setFlag()`) et met à jour l'affichage OLED (via U8g2). Il gère également le calcul dynamique des métriques réseau (débit instantané en B/s et liste des émetteurs actifs filtrée par un timeout de 10 secondes).
 *   **[serial.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/serial.cpp) (Sérialisation & Bluetooth Mirror)** : Implémente le calcul de somme de contrôle CRC16-CCITT et encapsule les payloads LoRa décodées dans le format de trame binaire officiel de NectarMC. Il s'occupe de dupliquer la trame finalisée sur le port série USB et sur le flux série Bluetooth Classic (`SerialBT`) lorsqu'un client est connecté.
 *   **[function.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/function.cpp) (Mémoire NVS, SD & Interface Graphique)** : Regroupe les fonctions utilitaires système. Il gère le stockage non-volatile (NVS via `<Preferences.h>`) pour sauvegarder/charger les configurations LoRa à chaud, effectue la détection et les tests de capacité de la carte SD, et écrit les logs au format CSV (`/log_X.csv`). Il pilote également les animations graphiques OLED (animation de démarrage du pylône radio et icônes visuelles d'état d'insertion de carte SD).
-*   **[header.h](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/include/header.h) (Configuration & Pinout)** : Le fichier d'en-tête central. Il déclare les variables globales partagées, configure les constantes matérielles (mapping des broches GPIO pour l'écran I2C, le bus SPI de la radio, le bus SPI de la carte SD et le pin ADC de la batterie), et définit les structures de configuration (`LoRaConfig`) ainsi que les limites de fréquence ISM physiques autorisées par environnement de compilation.
+*   **[header.h](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/include/header.h) (Configuration & Pinout)** : Fichier d'en-tête central. Il déclare les variables globales partagées, configure les constantes matérielles (mapping des broches GPIO pour l'écran I2C, le bus SPI de la radio, le bus SPI de la carte SD et le pin ADC de la batterie), et définit les structures de configuration (`LoRaConfig`) ainsi que les limites de fréquence ISM physiques autorisées par environnement de compilation.
 
 ---
 
