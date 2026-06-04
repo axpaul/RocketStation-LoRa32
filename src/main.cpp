@@ -57,7 +57,7 @@ void setup()
 
     File log = SD.open(logFileName, FILE_WRITE);
     if (log) {
-      log.println("Timestamp,RSSI,SNR,SSID,APID,RawFrame");
+      log.println("Index,Timestamp,Length,RSSI,SNR,SSID,APID,RawFrame");
       log.close();
     }
     checkSDCardSpace(u8g2);

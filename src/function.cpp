@@ -145,31 +145,44 @@ void checkSDCardSpace(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2) {
 }
 
 void writeFrameToFile(const char* filepath, const uint8_t* frame, size_t length, float rssi, float snr, const char* ssid_str, uint8_t apid) {
+  static uint32_t logPacketCount = 0;
+  logPacketCount++;
+
   File log = SD.open(filepath, FILE_APPEND);
   if (log) {
-    // 1. Horodatage (HH:MM:SS) depuis l'horloge RTC
+    // 1. Index du message reçu (Compteur de trames pour ce fichier)
+    log.print(logPacketCount);
+    log.print(",");
+
+    // 2. Horodatage (HH:MM:SS) depuis l'horloge RTC
     char timeStr[16];
     snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d", rtc.getHour(true), rtc.getMinute(), rtc.getSecond());
     log.print(timeStr);
     log.print(",");
 
-    // 2. Paramètres physiques (RSSI, SNR)
+    // 3. Nombre d'octets reçus (Taille de la trame)
+    log.print(length);
+    log.print(",");
+
+    // 4. Paramètres physiques (RSSI, SNR)
     log.print(rssi);
     log.print(",");
     log.print(snr);
     log.print(",");
 
-    // 3. Paramètres de trame (SSID, APID)
+    // 5. Paramètres de trame (SSID, APID)
     log.print(ssid_str);
     log.print(",");
     log.print(apid);
     log.print(",");
 
-    // 4. Trame brute en Hexadécimal continu
+    // 6. Trame brute en Hexadécimal continu (optimisé sans sprintf)
+    static const char hexChars[] = "0123456789ABCDEF";
     for (size_t i = 0; i < length; i++) {
-      char hex[3];
-      sprintf(hex, "%02X", frame[i]);
-      log.print(hex);
+      char hex[2];
+      hex[0] = hexChars[(frame[i] >> 4) & 0x0F];
+      hex[1] = hexChars[frame[i] & 0x0F];
+      log.write((const uint8_t*)hex, 2);
     }
 
     log.println();
