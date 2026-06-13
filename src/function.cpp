@@ -257,11 +257,14 @@ void loadLoRaConfig() {
   activeConfig.frequency = prefs.getFloat("freq", DEFAULT_FREQUENCY);
   activeConfig.spreadingFactor = prefs.getUChar("sf", DEFAULT_SF);
   activeConfig.bandwidth = prefs.getFloat("bw", DEFAULT_BW);
+  activeConfig.crcEnable = prefs.getBool("crc", true);
+  activeConfig.crcMode = prefs.getBool("crcMode", false);
   
   prefs.end(); // Fermeture propre de la NVS
   
-  Serial.printf("[CONFIG] Loaded from NVS: Freq=%.3f MHz, SF=%d, BW=%.1f kHz\n", 
-                activeConfig.frequency, activeConfig.spreadingFactor, activeConfig.bandwidth);
+  Serial.printf("[CONFIG] Loaded from NVS: Freq=%.3f MHz, SF=%d, BW=%.1f kHz, CRC=%s (Mode=%s)\n", 
+                activeConfig.frequency, activeConfig.spreadingFactor, activeConfig.bandwidth, 
+                activeConfig.crcEnable ? "ON" : "OFF", activeConfig.crcMode ? "IBM" : "CCITT");
 }
 
 /**
@@ -274,6 +277,8 @@ void saveLoRaConfig() {
   prefs.putFloat("freq", activeConfig.frequency);
   prefs.putUChar("sf", activeConfig.spreadingFactor);
   prefs.putFloat("bw", activeConfig.bandwidth);
+  prefs.putBool("crc", activeConfig.crcEnable);
+  prefs.putBool("crcMode", activeConfig.crcMode);
   
   prefs.end();
   

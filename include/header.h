@@ -96,6 +96,8 @@ struct LoRaConfig {
   float frequency;
   uint8_t spreadingFactor;
   float bandwidth;
+  bool crcEnable;
+  bool crcMode; // false = CCITT, true = IBM
 };
 
 extern LoRaConfig activeConfig;

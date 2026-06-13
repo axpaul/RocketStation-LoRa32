@@ -66,7 +66,7 @@ void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio) {
     radio->setBandwidth(activeConfig.bandwidth);
     radio->setCurrentLimit(120);
     radio->setSpreadingFactor(activeConfig.spreadingFactor);
-    radio->setCRC(true, false);
+    radio->setCRC(activeConfig.crcEnable, activeConfig.crcMode);
     radio->setDio0Action(setFlag, RISING);
     state = radio->startReceive();
     

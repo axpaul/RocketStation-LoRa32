@@ -102,8 +102,27 @@ Si le CRC matériel de la puce LoRa n'est pas utilisé, l'émetteur doit calcule
 | **Octets 3+N à 4+N** | `uint16_t` | `CRC16` | *(Option B uniquement)* Somme de contrôle logicielle de 2 octets en Little-Endian. |
 
 > [!NOTE]
-> **Compatibilité et configuration de la station :**
-> La station de réception sol est configurée par défaut avec le **CRC matériel activé** (`radio->setCRC(true)` dans `src/radio.cpp`), ce qui correspond à l'**Option A** (conforme aux spécifications de la [documentation de NectarMC](https://github.com/mlavardin/NectarMC/blob/master/DOCUMENTATION/FRAME_FORMAT.md)). Si vous souhaitez basculer sur l'**Option B**, vous devez configurer `radio->setCRC(false)` dans le code source de l'ESP32 et faire gérer la validation de la trame par votre décodeur applicatif.
+> **Compatibilité, Rôle de RadioLib et Fonctionnement Interne du CRC :**
+>
+> 1. **Qui gère le CRC matériel ?**
+>    Le calcul et la vérification du CRC matériel (Hardware CRC) ne sont pas effectués en logiciel par la bibliothèque RadioLib ni par le CPU de l'ESP32. Ils sont entièrement **réalisés en silicium par la puce Semtech SX1276**.
+>    La bibliothèque RadioLib sert d'interface logicielle pour configurer les registres de la puce :
+>    * La fonction `radio->setCRC(bool enable, bool mode = false)` écrit directement dans le registre `RegModemConfig1` (bit 0, `RxPayloadCrcOn` en mode LoRa) pour activer ou désactiver cette fonctionnalité matérielle.
+>    * Le paramètre `mode` (par défaut `false`) détermine le comportement ou le type de CRC à appliquer selon les registres internes du Semtech.
+>
+> 2. **Fonctionnement du CRC Matériel (Option A) :**
+>    * **À l'émission (TX)** : Lorsque le CRC est activé (`AT+CRC=1`), l'émetteur (Semtech SX1276) calcule automatiquement une somme de contrôle CRC16 (polynôme standard CCITT `X^16 + X^12 + X^5 + 1`) sur l'ensemble de la charge utile (payload) au fur et à mesure qu'elle sort de la mémoire FIFO. La puce insère ensuite ces 2 octets à la fin du paquet LoRa physique et positionne un bit d'en-tête (Header) pour indiquer la présence du CRC.
+>    * **À la réception (RX)** : Le module SX1276 du récepteur décode l'en-tête physique, détecte que le paquet contient un CRC, recalcule le CRC sur les données reçues, et le compare aux 2 octets reçus en fin de trame.
+>      * *Si les CRC concordent* : Le paquet est jugé intègre, l'interruption matérielle `DIO0` (`RxDone`) est levée, et l'ESP32 extrait le paquet de la FIFO.
+>      * *Si les CRC diffèrent* (erreur de transmission due au bruit ou à une collision) : Le matériel positionne le bit d'erreur `PayloadCrcError` dans le registre des interruptions (`RegIrqFlags`). RadioLib intercepte ce flag, rejette immédiatement le paquet corrompu et renvoie le code d'erreur `RADIOLIB_ERR_CRC_MISMATCH`. Le paquet défectueux est ainsi jeté en amont et n'est jamais traité ni transmis.
+>
+> 3. **Fonctionnement du CRC Logiciel (Option B) :**
+>    Lorsque le CRC matériel est désactivé (`AT+CRC=0`), la puce SX1276 n'ajoute pas de CRC à la trame physique à l'émission et n'effectue aucun contrôle d'intégrité à la réception.
+>    * Pour garantir que les données reçues ne sont pas corrompues, c'est au programme de l'émetteur (le tracker) de calculer une somme de contrôle (par exemple un CRC16-CCITT) et de l'ajouter manuellement dans la charge utile sous forme de 2 octets en fin de payload.
+>    * C'est ensuite au récepteur (ou au décodeur final sur le PC) de recalculer ce CRC en logiciel pour valider les données.
+>    * Ce mode permet de récupérer et d'analyser des trames même si elles contiennent des erreurs binaires mineures (ce qui est impossible avec le CRC matériel actif, car la puce jette le paquet entier en silence).
+>
+> **Commandes AT associées** : Vous pouvez modifier l'état d'activation du CRC matériel à chaud via la commande `AT+CRC=1` (activé) ou `AT+CRC=0` (désactivé) et interroger son état avec `AT+CRC?`. Pour utiliser l'**Option B** (CRC logiciel déporté), désactivez le CRC matériel sur la station (`AT+CRC=0`) et gérez le contrôle d'intégrité directement dans votre décodeur sur le PC.
 
 ---
 
@@ -162,6 +181,8 @@ Chaque commande doit se terminer par un retour chariot (`\n` ou `\r`). Les répo
 | **`AT+SF?`** | Interroge le Spreading Factor actif | Renvoie `+SF: 8` suivi de `OK` |
 | **`AT+BW=<val>`** | Modifie la bande passante LoRa (en kHz) | Valeur $> 0$. Ex: `AT+BW=250.0`. Renvoie `OK` ou `ERROR`. |
 | **`AT+BW?`** | Interroge la bande passante active | Renvoie `+BW: 250.0` suivi de `OK` |
+| **`AT+CRC=<0/1>[,0/1]`** | Active (`1`) ou désactive (`0`) le CRC matériel du SX1276.<br>Paramètre facultatif de mode : `0` = CCITT (par défaut), `1` = IBM (mode FSK). | Ex: `AT+CRC=1,0`. Renvoie `OK` ou `ERROR`. |
+| **`AT+CRC?`** | Interroge l'état et le mode du CRC matériel actif | Renvoie `+CRC: <activé>,<mode>` suivi de `OK` (ex: `+CRC: 1,0`) |
 | **`AT+TIME=<epoch>`** | Configure l'heure RTC de la station (Epoch Unix en secondes) | Ex: `AT+TIME=1781290382`. Renvoie `OK`. |
 | **`AT+TIME?`** | Interroge l'horloge RTC de la station (Epoch Unix en secondes) | Renvoie `+TIME: 1781290382` suivi de `OK`. |
 | **`AT+RSSI?`** | Interroge le RSSI du dernier paquet reçu (en dBm) | Renvoie `+RSSI: -85.0` suivi de `OK`. |

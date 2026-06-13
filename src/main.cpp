@@ -203,7 +203,14 @@ void checkSerialCommands(SX1276 *radio) {
  * - AT+SF?         : Renvoie le Spreading Factor actif.
  * - AT+BW=<khz>    : Applique la bande passante LoRa.
  * - AT+BW?         : Renvoie la bande passante active.
- * - AT+CFG         : Affiche un résumé de la configuration et de l'état matériel.
+ * - AT+CRC=<0|1>   : Active (1) ou désactive (0) le CRC matériel du module radio.
+ * - AT+CRC?        : Renvoie l'état du CRC matériel actif (0 ou 1).
+ * - AT+TIME=<epoch>: Synchronise l'heure RTC de la station (Epoch Unix).
+ * - AT+TIME?       : Renvoie l'époque Unix de l'horloge RTC active.
+ * - AT+RSSI?       : Renvoie le RSSI du dernier paquet reçu en dBm.
+ * - AT+SNR?        : Renvoie le SNR du dernier paquet reçu en dB.
+ * - AT+SIG?        : Renvoie à la fois le RSSI et le SNR du dernier paquet reçu.
+ * - AT+CFG         : Affiche un résumé de la configuration (version, freq, sf, bw, crc, etc.) et de l'état.
  * - AT+SAVE        : Sauvegarde définitivement les paramètres radio actifs dans la NVS.
  * - AT+RESET       : Efface la configuration personnalisée de la NVS et redémarre la carte.
  */
@@ -304,6 +311,34 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
     responseStream.println("OK");
   }
 
+  // AT+CRC=0 ou AT+CRC=1 ou AT+CRC?
+  else if (strncmp(cmd, "AT+CRC=", 7) == 0) {
+    int enable = -1;
+    int mode = 0; // Default to CCITT
+    int numArgs = sscanf(cmd + 7, "%d,%d", &enable, &mode);
+    if (numArgs >= 1 && (enable == 0 || enable == 1)) {
+      if (numArgs == 2 && mode != 0 && mode != 1) {
+        responseStream.println("ERROR: CRC mode must be 0 (CCITT) or 1 (IBM)");
+      } else {
+        activeConfig.crcEnable = (enable == 1);
+        if (numArgs == 2) {
+          activeConfig.crcMode = (mode == 1);
+        }
+        int state = radio->setCRC(activeConfig.crcEnable, activeConfig.crcMode);
+        if (state == RADIOLIB_ERR_NONE) {
+          responseStream.println("OK");
+        } else {
+          responseStream.printf("ERROR: %d\n", state);
+        }
+      }
+    } else {
+      responseStream.println("ERROR: CRC must be 0 (Disabled) or 1 (Enabled) with optional mode: AT+CRC=<0|1>[,0|1]");
+    }
+  } else if (strcmp(cmd, "AT+CRC?") == 0) {
+    responseStream.printf("+CRC: %d,%d\n", activeConfig.crcEnable ? 1 : 0, activeConfig.crcMode ? 1 : 0);
+    responseStream.println("OK");
+  }
+
   // AT+CFG ou AT+STATUS
   else if (strcmp(cmd, "AT+CFG") == 0 || strcmp(cmd, "AT+STATUS") == 0) {
     responseStream.println("--- RocketStation Configuration ---");
@@ -313,6 +348,11 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
     responseStream.printf("Frequency (Active): %.3f MHz\n", activeConfig.frequency);
     responseStream.printf("Spreading Factor  : %d\n", activeConfig.spreadingFactor);
     responseStream.printf("Bandwidth         : %.1f kHz\n", activeConfig.bandwidth);
+    if (activeConfig.crcEnable) {
+      responseStream.printf("Hardware CRC      : ON (%s)\n", activeConfig.crcMode ? "IBM" : "CCITT");
+    } else {
+      responseStream.println("Hardware CRC      : OFF");
+    }
     responseStream.printf("SD Card Connected : %s\n", *SDCard ? "Yes" : "No");
 #if ENABLE_BLUETOOTH
     responseStream.printf("Bluetooth Client  : %s\n", SerialBT.connected() ? "Connected" : "Disconnected");
