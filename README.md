@@ -187,21 +187,22 @@ pio run -t upload
 
 ## 🌐 Outils de l'Écosystème NectarMC
 
-Pour exploiter pleinement votre station sol RocketStation-LoRa32, vous pouvez utiliser les deux solutions logicielles officielles :
-
-### 1. ⚡ Console Web de Contrôle & Flasheur en Ligne
-Une interface web moderne et statique est disponible sans aucune installation requise. Elle communique en direct avec votre récepteur en USB :
-👉 **[Ouvrir la Nectar Rx Station Web Console (Live)](https://axpaul.github.io/RocketStation-LoRa32/)**
-
-Cette console web vous permet de :
-*   **🔌 Piloter la station par port COM USB** : Connectez votre récepteur LoRa32 en un clic et configurez-le dynamiquement (fréquence, Spreading Factor, Bande Passante) à l'aide de boutons simples ou de la console AT interactive.
-*   **🛸 Suivre les Trackers Actifs en temps réel** : La page liste automatiquement tous les émetteurs détectés (fusées, minifusées, ballons...) avec leurs types de mission, APID, nombre de trames et charges utiles. Elle détecte et marque automatiquement comme `PERDU` les trackers inactifs pendant plus de 15 secondes.
-*   **📈 Tracer le débit de données** : Un graphique SVG en temps réel affiche le flux instantané de données reçues.
-*   **⚡ Flasher le firmware en ligne** : Mettez à jour le micrologiciel de votre carte TTGO avec la version **v1.3.1** native (en 868 ou 433 MHz) directement en un clic depuis le navigateur grâce à `esptool-js`.
-
-### 2. 🖥️ Logiciel de Traitement & Visualisation 3D : NectarMC
-La station sol est entièrement configurée pour transmettre les données de vol en temps réel vers le logiciel principal de visualisation de la télémétrie :
-👉 **[Découvrir NectarMC sur GitHub](https://github.com/mlavardin/NectarMC)**
+> [!IMPORTANT]
+> Pour exploiter pleinement votre station sol RocketStation-LoRa32, vous pouvez utiliser les deux solutions logicielles officielles :
+> 
+> ### 1. ⚡ Console Web de Contrôle & Flasheur en Ligne
+> Une interface web moderne et statique est disponible sans aucune installation requise. Elle communique en direct avec votre récepteur en USB :
+> 👉 **[Ouvrir la Nectar Rx Station Web Console (Live)](https://axpaul.github.io/RocketStation-LoRa32/)**
+> 
+> Cette console web vous permet de :
+> *   **🔌 Piloter la station par port COM USB** : Connectez votre récepteur LoRa32 en un clic et configurez-le dynamiquement (fréquence, Spreading Factor, Bande Passante) à l'aide de boutons simples ou de la console AT interactive.
+> *   **🛸 Suivre les Trackers Actifs en temps réel** : La page liste automatiquement tous les émetteurs détectés (fusées, minifusées, ballons...) avec leurs types de mission, APID, nombre de trames et charges utiles. Elle détecte et marque automatiquement comme `PERDU` les trackers inactifs pendant plus de 15 secondes.
+> *   **📈 Tracer le débit de données** : Un graphique SVG en temps réel affiche le flux instantané de données reçues.
+> *   **⚡ Flasher le firmware en ligne** : Mettez à jour le micrologiciel de votre carte TTGO avec la version **v1.3.1** native (en 868 ou 433 MHz) directement en un clic depuis le navigateur grâce à `esptool-js`.
+> 
+> ### 2. 🖥️ Logiciel de Traitement & Visualisation 3D : NectarMC
+> La station sol est entièrement configurée pour transmettre les données de vol en temps réel vers le logiciel principal de visualisation de la télémétrie :
+> 👉 **[Découvrir NectarMC sur GitHub](https://github.com/mlavardin/NectarMC)**
 
 ---
 
