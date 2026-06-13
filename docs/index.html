@@ -110,6 +110,14 @@
             <option value="500">500.0 kHz</option>
           </select>
         </div>
+        <div class="form-group">
+          <label for="select-crc" data-i18n="config_crc">Contrôle CRC :</label>
+          <select id="select-crc" disabled>
+            <option value="0">Désactivé (Option B / Soft)</option>
+            <option value="1,0" selected>Activé - CCITT (Option A / Hard)</option>
+            <option value="1,1">Activé - IBM (Hard FSK)</option>
+          </select>
+        </div>
 
         <div class="button-group-grid">
           <button id="btn-read-cfg" class="btn btn-secondary" data-i18n="config_btn_read" disabled>Actualiser</button>
@@ -139,6 +147,10 @@
           <div class="stat-box">
             <span class="stat-val" id="stat-count">0</span>
             <span class="stat-lbl" data-i18n="stats_count">Trames Reçues</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-val" id="stat-crc-errors" style="color: var(--color-danger);">0</span>
+            <span class="stat-lbl" data-i18n="stats_crc_errors">Erreurs CRC</span>
           </div>
         </div>
         
@@ -255,12 +267,13 @@
               <th data-i18n="th_size">Taille</th>
               <th data-i18n="th_rssi">RSSI</th>
               <th data-i18n="th_snr">SNR</th>
+              <th data-i18n="th_crc">CRC</th>
               <th data-i18n="th_payload">Charge Utile (Hex)</th>
             </tr>
           </thead>
           <tbody>
             <tr id="row-empty">
-              <td id="lbl-empty-telemetry" colspan="8" class="text-center text-secondary" data-i18n="telemetry_empty">Aucune trame reçue pour l'instant. Branchez le port série et mettez sous tension vos trackers.</td>
+              <td id="lbl-empty-telemetry" colspan="9" class="text-center text-secondary" data-i18n="telemetry_empty">Aucune trame reçue pour l'instant. Branchez le port série et mettez sous tension vos trackers.</td>
             </tr>
           </tbody>
         </table>
@@ -288,6 +301,6 @@
     <p>&copy; 2026 Nectar Project - <span data-i18n="footer_credit">Conçu et développé par</span> <a href="https://github.com/axpaul" target="_blank" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">Paul Miailhe (axpaul)</a></p>
   </footer>
 
-  <script type="module" src="app.js?v=1.4.0-timestamp"></script>
+  <script type="module" src="app.js?v=1.5.0-opt-crc"></script>
 </body>
 </html>

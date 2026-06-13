@@ -101,7 +101,7 @@ void SDCardDetection(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SPIClass* SDSPI,
   SDSPI->begin(SDCARD_SCLK, SDCARD_MISO, SDCARD_MOSI, SDCARD_CS);
 
   u8g2->setFont(u8g2_font_ncenB08_tr);
-  if (!SD.begin(SDCARD_CS, *SDSPI)) {
+  if (!SD.begin(SDCARD_CS, *SDSPI, 20000000)) {
     *SDCard = false;
     Serial.println("[SD] Initialization FAILED!");
     

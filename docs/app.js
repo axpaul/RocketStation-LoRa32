@@ -9,6 +9,7 @@ let inputWriter = null;
 let isConnected = false;
 let rxBuffer = [];
 let packetIndex = 0;
+let crcErrorsCount = 0;
 let readLoopPromise = null; // Promesse pour suivre la fin de la boucle de lecture
 let activeTrackers = {};    // Dictionnaire des émetteurs détectés : { name: { typeLabelKey, lastApid, packetCount, lastSeen, lastPayloadHex } }
 let allReceivedFrames = []; // Historique complet pour export CSV (capé à 5000 trames)
@@ -54,6 +55,7 @@ const i18n = {
     config_frequency: "Fréquence (MHz) :",
     config_sf: "Spreading Factor (SF) :",
     config_bw: "Bande Passante (BW) :",
+    config_crc: "Contrôle CRC :",
     config_btn_read: "Actualiser",
     config_btn_write: "Appliquer",
     config_btn_save: "Sauver NVS",
@@ -64,6 +66,7 @@ const i18n = {
     chart_rssi_title: "Tendance RSSI",
     chart_snr_title: "Tendance SNR",
     stats_count: "Trames Reçues",
+    stats_crc_errors: "Erreurs CRC",
     flash_title: "⚡ Mise à Jour Firmware",
     flash_desc: "Flashez directement la version <strong>v1.3.1</strong> depuis votre navigateur par port USB.",
     flash_band: "Bande Radio native de la carte :",
@@ -81,6 +84,7 @@ const i18n = {
     th_last_activity: "Dernière Activité",
     th_status: "Statut",
     th_payload: "Charge Utile (Hex)",
+    th_crc: "CRC",
     th_signal_quality: "Qualité Signal (RSSI / SNR)",
     trackers_empty: "Aucun émetteur détecté pour l'instant. Branchez le récepteur LoRa pour intercepter les signaux.",
     telemetry_title: "📡 Trames reçues en direct (NectarMC)",
@@ -111,6 +115,7 @@ const i18n = {
     log_read_error: "Erreur de lecture : {message}",
     log_send_error: "Erreur d'envoi : {message}",
     log_physical_disconnect: "Le port série a été déconnecté physiquement.",
+    log_crc_error: "[ERREUR CRC] Trame rejetée : CRC reçu = {rec}, calculé = {calc}",
     log_write_flash_start: "Début de l'écriture de l'application à 0x10000...",
     log_update_complete_reboot: "Mise à jour terminée ! Redémarrage de la carte...",
     log_flash_error: "Erreur lors du flash : {message}",
@@ -155,6 +160,7 @@ const i18n = {
     config_frequency: "Frequency (MHz):",
     config_sf: "Spreading Factor (SF):",
     config_bw: "Bandwidth (BW):",
+    config_crc: "CRC Control:",
     config_btn_read: "Refresh",
     config_btn_write: "Apply",
     config_btn_save: "Save NVS",
@@ -165,6 +171,7 @@ const i18n = {
     chart_rssi_title: "RSSI Trend",
     chart_snr_title: "SNR Trend",
     stats_count: "Received Frames",
+    stats_crc_errors: "CRC Errors",
     flash_title: "⚡ Firmware Update",
     flash_desc: "Flash version <strong>v1.3.1</strong> directly from your browser via USB port.",
     flash_band: "Board's native Radio Band:",
@@ -182,6 +189,7 @@ const i18n = {
     th_last_activity: "Last Activity",
     th_status: "Status",
     th_payload: "Payload (Hex)",
+    th_crc: "CRC",
     th_signal_quality: "Signal Quality (RSSI / SNR)",
     trackers_empty: "No transmitter detected yet. Connect the LoRa receiver to intercept signals.",
     telemetry_title: "📡 Live received frames (NectarMC)",
@@ -212,6 +220,7 @@ const i18n = {
     log_read_error: "Read error: {message}",
     log_send_error: "Send error: {message}",
     log_physical_disconnect: "The serial port was physically disconnected.",
+    log_crc_error: "[CRC ERROR] Frame discarded: received CRC = {rec}, calculated = {calc}",
     log_write_flash_start: "Starting application write at 0x10000...",
     log_update_complete_reboot: "Update complete! Rebooting board...",
     log_flash_error: "Error during flash: {message}",
@@ -308,6 +317,7 @@ const selectFwVersion = document.getElementById('select-fw-version');
 const inputFreq = document.getElementById('input-freq');
 const selectSf = document.getElementById('select-sf') || document.getElementById('input-sf');
 const selectBw = document.getElementById('select-bw') || document.getElementById('input-bw');
+const selectCrc = document.getElementById('select-crc');
 
 // Boutons Configuration
 const btnReadCfg = document.getElementById('btn-read-cfg');
@@ -315,11 +325,12 @@ const btnWriteCfg = document.getElementById('btn-write-cfg');
 const btnSaveCfg = document.getElementById('btn-save-cfg');
 const btnResetCfg = document.getElementById('btn-reset-cfg');
 
-// Stats
-const statRssi = document.getElementById('stat-rssi');
-const statSnr = document.getElementById('stat-snr');
-const statCount = document.getElementById('stat-count');
-const lblThroughput = document.getElementById('lbl-throughput');
+  // Stats
+  const statRssi = document.getElementById('stat-rssi');
+  const statSnr = document.getElementById('stat-snr');
+  const statCount = document.getElementById('stat-count');
+  const statCrcErrors = document.getElementById('stat-crc-errors');
+  const lblThroughput = document.getElementById('lbl-throughput');
 
 // Terminal & Log
 const terminalLogs = document.getElementById('terminal-logs');
@@ -401,6 +412,7 @@ function updateConnectionUI(connected, name = '') {
   setElementDisabled(inputFreq, disabledState);
   setElementDisabled(selectSf, disabledState);
   setElementDisabled(selectBw, disabledState);
+  setElementDisabled(selectCrc, disabledState);
   setElementDisabled(btnReadCfg, disabledState);
   setElementDisabled(btnWriteCfg, disabledState);
   setElementDisabled(btnSaveCfg, disabledState);
@@ -444,6 +456,7 @@ async function connectSerial() {
         await sendSerialText('AT+FREQ?');
         await sendSerialText('AT+SF?');
         await sendSerialText('AT+BW?');
+        await sendSerialText('AT+CRC?');
       }, 6000);
 
     } catch (err) {
@@ -644,14 +657,63 @@ function renderTelemetryTable() {
       <td>${f.size} ${getTranslation('unit_bytes')}</td>
       <td>${f.rssi} dBm</td>
       <td>${f.snr} dB</td>
+      <td><span class="badge connected">OK (${f.crcHex})</span></td>
       <td style="font-family: var(--font-mono); color: var(--color-cyan); word-break: break-all;">${f.payload}</td>
     `;
     tableTelemetryBody.appendChild(tr);
   });
 }
 
+// Calcule le CRC16-CCITT (polynôme 0x1021, valeur initiale 0xFFFF)
+function calculateCRC16(data) {
+  let crc = 0xFFFF;
+  for (let i = 0; i < data.length; i++) {
+    crc ^= (data[i] << 8);
+    for (let j = 0; j < 8; j++) {
+      if (crc & 0x8000) {
+        crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
+      } else {
+        crc = (crc << 1) & 0xFFFF;
+      }
+    }
+  }
+  return crc;
+}
+
 // Décodage des trames NectarMC
 function decodeNectarFrame(frame) {
+  const payloadSize = frame[3]; // Taille brute de la payload LoRa
+  const fwVersion = selectFwVersion ? selectFwVersion.value : '1.4.0';
+  let epoch = 0;
+  let crc = 0;
+  let calculatedCrc = 0;
+
+  if (fwVersion === '1.3.1') {
+    crc = (frame[4 + payloadSize + 3] << 8) | frame[4 + payloadSize + 2];
+    calculatedCrc = calculateCRC16(frame.slice(0, 4 + payloadSize + 2));
+  } else {
+    // Le Timestamp (Unix Epoch) est après le SNR (4 octets, uint32_t Little-Endian)
+    const tsOffset = 4 + payloadSize + 2;
+    epoch = (frame[tsOffset + 3] << 24 >>> 0) +
+            (frame[tsOffset + 2] << 16) +
+            (frame[tsOffset + 1] << 8) +
+            frame[tsOffset];
+    crc = (frame[4 + payloadSize + 7] << 8) | frame[4 + payloadSize + 6];
+    calculatedCrc = calculateCRC16(frame.slice(0, 4 + payloadSize + 6));
+  }
+
+  // Vérification du CRC
+  if (crc !== calculatedCrc) {
+    crcErrorsCount++;
+    if (statCrcErrors) {
+      statCrcErrors.textContent = crcErrorsCount.toString();
+    }
+    const hexCrcRec = '0x' + crc.toString(16).toUpperCase().padStart(4, '0');
+    const hexCrcCalc = '0x' + calculatedCrc.toString(16).toUpperCase().padStart(4, '0');
+    logToTerminal(getTranslation('log_crc_error', { rec: hexCrcRec, calc: hexCrcCalc }), 'sys-out');
+    return; // Rejeter la trame corrompue
+  }
+
   packetIndex++;
   
   const idMission = (frame[2] << 8) | frame[1];
@@ -660,7 +722,6 @@ function decodeNectarFrame(frame) {
   const ssidType = (ssid >> 8) & 0x03;
   const ssidNum = ssid & 0xFF;
   
-  const payloadSize = frame[3]; // Taille brute de la payload LoRa
   const payload = frame.slice(4, 4 + payloadSize); // Les données utiles LoRa brutes
   
   // RSSI et SNR sont après la payload (de taille payloadSize)
@@ -671,23 +732,8 @@ function decodeNectarFrame(frame) {
   // Le SNR est multiplié par 4 à l'envoi pour coder au 0.25 dB de précision
   const signedSnr = rawSnr >= 128 ? rawSnr - 256 : rawSnr;
   const snr = signedSnr / 4.0;
-  
-  const fwVersion = selectFwVersion ? selectFwVersion.value : '1.4.0';
-  let epoch = 0;
-  let crc = 0;
 
-  if (fwVersion === '1.3.1') {
-    crc = (frame[4 + payloadSize + 3] << 8) | frame[4 + payloadSize + 2];
-  } else {
-    // Le Timestamp (Unix Epoch) est après le SNR (4 octets, uint32_t Little-Endian)
-    const tsOffset = 4 + payloadSize + 2;
-    epoch = (frame[tsOffset + 3] << 24 >>> 0) +
-            (frame[tsOffset + 2] << 16) +
-            (frame[tsOffset + 1] << 8) +
-            frame[tsOffset];
-    crc = (frame[4 + payloadSize + 7] << 8) | frame[4 + payloadSize + 6];
-  }
-  
+  // ... (ssidPrefix extraction code is identical) ...
   let ssidPrefix = 'OTHER';
   let missionTypeLabelKey = 'mission_other';
   if (ssidType === 0) {
@@ -712,6 +758,8 @@ function decodeNectarFrame(frame) {
     timestamp = new Date().toLocaleTimeString();
   }
   
+  const crcHex = '0x' + crc.toString(16).toUpperCase().padStart(4, '0');
+
   // Ajouter à l'historique complet (capé à 5000 trames) avec la taille brute LoRa
   allReceivedFrames.push({
     index: packetIndex,
@@ -721,7 +769,8 @@ function decodeNectarFrame(frame) {
     size: payloadSize, // Taille réelle des données utiles LoRa
     payload: bytesToHex(payload),
     rssi: rssi,
-    snr: snr
+    snr: snr,
+    crcHex: crcHex
   });
   if (allReceivedFrames.length > 5000) {
     allReceivedFrames.shift();
@@ -838,13 +887,15 @@ function checkTrackersTimeout() {
 
 // Analyse des réponses textuelles AT
 function parseATResponse(line) {
-  // Ligne de boot : "[CONFIG] Loaded from NVS: Freq=869.525 MHz, SF=8, BW=250.0 kHz"
+  // Ligne de boot : "[CONFIG] Loaded from NVS: Freq=869.525 MHz, SF=8, BW=250.0 kHz, CRC=ON (Mode=CCITT)"
   if (line.includes('Loaded from NVS:')) {
-    const match = line.match(/Freq=([\d.]+)\s*MHz,\s*SF=(\d+),\s*BW=([\d.]+)\s*kHz/i);
+    const match = line.match(/Freq=([\d.]+)\s*MHz,\s*SF=(\d+),\s*BW=([\d.]+)\s*kHz,\s*CRC=(ON|OFF)(?:\s*\(Mode=(CCITT|IBM)\))?/i);
     if (match) {
       const freq = parseFloat(match[1]);
       const sf = parseInt(match[2], 10);
       const bw = parseFloat(match[3]);
+      const crcEnabled = match[4].toUpperCase() === 'ON';
+      const crcMode = match[5] ? match[5].toUpperCase() : 'CCITT';
       
       currentConfig.frequency = freq;
       currentConfig.sf = sf;
@@ -853,6 +904,11 @@ function parseATResponse(line) {
       if (inputFreq) inputFreq.value = freq.toFixed(3);
       if (selectSf) selectSf.value = sf.toString();
       if (selectBw) selectBw.value = bw.toString();
+      if (selectCrc) {
+        if (!crcEnabled) selectCrc.value = "0";
+        else if (crcMode === 'IBM') selectCrc.value = "1,1";
+        else selectCrc.value = "1,0";
+      }
       return;
     }
   }
@@ -889,6 +945,30 @@ function parseATResponse(line) {
     currentConfig.bw = val;
     if (selectBw) {
       selectBw.value = val.toString();
+    }
+  }
+  // CRC : "+CRC: <valeur>" ou rapport "Hardware CRC      : <valeur>"
+  else if (line.startsWith('+CRC:')) {
+    const val = line.split(':')[1].trim();
+    if (selectCrc) {
+      if (val.startsWith('0')) {
+        selectCrc.value = "0";
+      } else if (val === '1,1') {
+        selectCrc.value = "1,1";
+      } else {
+        selectCrc.value = "1,0";
+      }
+    }
+  } else if (line.includes('Hardware CRC')) {
+    const val = line.split(':')[1].trim();
+    if (selectCrc) {
+      if (val.includes('OFF')) {
+        selectCrc.value = "0";
+      } else if (val.includes('IBM')) {
+        selectCrc.value = "1,1";
+      } else {
+        selectCrc.value = "1,0";
+      }
     }
   }
 }
@@ -995,6 +1075,7 @@ if (btnReadCfg) {
     await sendSerialText('AT+FREQ?');
     await sendSerialText('AT+SF?');
     await sendSerialText('AT+BW?');
+    await sendSerialText('AT+CRC?');
   });
 }
 
@@ -1003,10 +1084,12 @@ if (btnWriteCfg) {
     const freq = inputFreq ? parseFloat(inputFreq.value) : NaN;
     const sf = selectSf ? parseInt(selectSf.value, 10) : NaN;
     const bw = selectBw ? parseFloat(selectBw.value) : NaN;
+    const crcVal = selectCrc ? selectCrc.value : null;
     
     if (!isNaN(freq)) await sendSerialText(`AT+FREQ=${freq.toFixed(3)}`);
     if (!isNaN(sf)) await sendSerialText(`AT+SF=${sf}`);
     if (!isNaN(bw)) await sendSerialText(`AT+BW=${bw.toFixed(1)}`);
+    if (crcVal) await sendSerialText(`AT+CRC=${crcVal}`);
   });
 }
 
@@ -1186,8 +1269,10 @@ if (btnClearTerminal) {
 if (btnClearTelemetry) {
   btnClearTelemetry.addEventListener('click', () => {
     packetIndex = 0;
+    crcErrorsCount = 0;
     allReceivedFrames = [];
     if (statCount) statCount.textContent = '0';
+    if (statCrcErrors) statCrcErrors.textContent = '0';
     if (tableTelemetryBody) {
       tableTelemetryBody.innerHTML = '';
       if (rowEmpty) {

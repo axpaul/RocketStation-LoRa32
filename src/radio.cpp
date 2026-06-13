@@ -20,6 +20,7 @@ char dispSsidApid[32] = "No Frame";
 float dispRssi = 0.0;
 float dispSnr = 0.0;
 bool dispHasFrame = false;
+bool displayNeedsUpdate = false;
 
 // Variables de statistiques pour le second écran OLED (Rotation d'affichage)
 static unsigned long lastTrackerPacketTime[256] = {0};
@@ -298,7 +299,7 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
           errCount++;
           snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
           strcpy(dispSsidApid, "Invalid size (<5B)");
-          updateDisplay(u8g2, radio);
+          displayNeedsUpdate = true;
           RadioStartListen(radio);
           return 0;
         }
@@ -310,7 +311,7 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
           errCount++;
           snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
           strcpy(dispSsidApid, "CRC Error (Soft)");
-          updateDisplay(u8g2, radio);
+          displayNeedsUpdate = true;
           RadioStartListen(radio);
           return 0;
         }
@@ -358,7 +359,7 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
       lastPacketTime = millis();
       hasReceivedAny = true;
 
-      updateDisplay(u8g2, radio);
+      displayNeedsUpdate = true;
       RadioStartListen(radio);
       return length;
     } else if (state == RADIOLIB_ERR_CRC_MISMATCH) {
@@ -367,7 +368,7 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
       dispRssi = radio->getRSSI();
       dispSnr = radio->getSNR();
       
-      updateDisplay(u8g2, radio);
+      displayNeedsUpdate = true;
       RadioStartListen(radio);
       return 0;
     } else {
@@ -376,7 +377,7 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
       dispRssi = radio->getRSSI();
       dispSnr = radio->getSNR();
       
-      updateDisplay(u8g2, radio);
+      displayNeedsUpdate = true;
       RadioStartListen(radio);
       return 0;
     }

@@ -86,19 +86,18 @@ void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const ui
     // 5. Calculer le CRC16 sur l'ensemble [Header + Payload LoRa + RSSI + SNR + Timestamp]
     uint16_t crc = calculate_crc16(frame, 4 + len + 2 + 4);
 
-    // 6. Émettre la trame complète sur la liaison série USB (Serial)
-    Serial.write(frame, 4 + len + 2 + 4); // Transmet Header + Payload + RSSI + SNR + Timestamp
-    Serial.write(crc & 0xFF);             // CRC16 Little-Endian (partie basse)
-    Serial.write((crc >> 8) & 0xFF);      // CRC16 Little-Endian (partie haute)
-    Serial.write('\n');                   // Retour chariot pour le debug dans les terminaux série
+    // 6. Écrire le CRC16 et le saut de ligne directement dans le buffer
+    frame[4 + len + 6] = crc & 0xFF;              // CRC16 Little-Endian (partie basse)
+    frame[4 + len + 7] = (crc >> 8) & 0xFF;       // CRC16 Little-Endian (partie haute)
+    frame[4 + len + 8] = '\n';                    // Saut de ligne
+
+    // 7. Émettre la trame complète en un seul appel (Série USB)
+    Serial.write(frame, 4 + len + 9);
 
 #if ENABLE_BLUETOOTH
-    // 7. Émettre également en Bluetooth si un client est connecté.
+    // 8. Émettre également en Bluetooth si un client est connecté.
     if (SerialBT.connected()) {
-        SerialBT.write(frame, 4 + len + 2 + 4);
-        SerialBT.write(crc & 0xFF);
-        SerialBT.write((crc >> 8) & 0xFF);
-        SerialBT.write('\n');             // Retour chariot pour la liaison Bluetooth
+        SerialBT.write(frame, 4 + len + 9);
     }
 #endif
 }

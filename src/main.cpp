@@ -32,6 +32,7 @@ LoRaConfig activeConfig;
 /**
  * @brief Initialisation matérielle et logicielle du système.
  */
+#ifndef UNIT_TEST
 void setup() {
   Serial.begin(115200);
   delay(100); // Laisse le temps au moniteur série de s'ouvrir
@@ -61,6 +62,7 @@ void setup() {
   // Configuration des bus de communication et broches E/S
   SPI.begin(RADIO_SCLK_PIN, RADIO_MISO_PIN, RADIO_MOSI_PIN);
   Wire.begin(I2C_SDA, I2C_SCL);
+  Wire.setClock(400000); // Activer Fast I2C (400 kHz)
   pinMode(BOARD_LED, OUTPUT);
   digitalWrite(BOARD_LED, LED_ON);
   pinMode(BATTERY_PIN, INPUT);
@@ -139,13 +141,21 @@ void loop() {
     }
   }
 
-  // Mettre à jour l'horloge en temps réel sur l'écran toutes les secondes
+  // Mettre à jour l'horloge ou le contenu de l'écran de manière asynchrone non bloquante
   static unsigned long lastUpdate = 0;
+  static unsigned long lastDisplayRefresh = 0;
   if (millis() - lastUpdate >= 1000) {
     lastUpdate = millis();
+    lastDisplayRefresh = millis();
     updateDisplay(u8g2, &radio);
+    displayNeedsUpdate = false;
+  } else if (displayNeedsUpdate && (millis() - lastDisplayRefresh >= 250)) {
+    lastDisplayRefresh = millis();
+    updateDisplay(u8g2, &radio);
+    displayNeedsUpdate = false;
   }
 }
+#endif
 
 /**
  * @brief Écoute et accumule les commandes série sur l'USB et le Bluetooth.
