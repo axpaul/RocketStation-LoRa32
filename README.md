@@ -59,92 +59,25 @@ Les informations détaillées s'affichent sous forme de deux écrans alternant a
 
 ---
 
-## Structure de la trame radio LoRa (Émetteurs)
+## Format des Trames (Radio & Série NectarMC)
 
-Les trames radio LoRa émises par les trackers/émetteurs vers la station au sol doivent respecter la structure binaire suivante en fonction du mode de contrôle d'intégrité de la liaison choisi :
+Les données transitent sous deux formats de trames différents selon le canal (Liaison Radio LoRa dans les airs, ou Liaison Série USB / Bluetooth vers le PC) :
+*   **Trames Radio LoRa (Air)** : Trames simplifiées émises par les trackers, avec ou sans signature CRC selon l'option choisie.
+*   **Trames Série NectarMC (USB / Bluetooth)** : Trames binaires enrichies de métadonnées (RSSI, SNR, horodatage de réception RTC, et signature CRC globale).
 
-### Option A : Avec CRC matériel (Recommandé & Par défaut)
-C'est le mode par défaut de cette station de réception. Le contrôle d'intégrité est pris en charge directement au niveau silicium par le module radio SX1276.
-*   Taille totale de la trame LoRa : $3 + N$ octets.
-
-```
-┌───────────────────────────────────────────────────────────┬───────────────────┐
-│                          HEADER                           │      PAYLOAD      │
-├───────────────────────────────────────────────────────────┼───────────────────┤
-│       SSID_NUM       │     APID      │     SSID_TYPE      │      N data       │
-│        1 Byte        │    1 Byte     │       1 Byte       │       bytes       │
-│       (0-255)        │    (0-63)     │       (0-3)        │     (N bytes)     │
-└──────────────────────┴───────────────┴────────────────────┴───────────────────┘
-```
-
-### Option B : Avec CRC logiciel (Si le CRC matériel est désactivé)
-Si le CRC matériel de la puce LoRa n'est pas utilisé, l'émetteur doit calculer et ajouter une somme de contrôle logicielle CRC16 de 2 octets immédiatement à la suite de la charge utile de données.
-*   Taille totale de la trame LoRa : $5 + N$ octets.
-
-```
-┌───────────────────────────────────────────────────────────┬───────────────────┬───────────────┐
-│                          HEADER                           │      PAYLOAD      │    CONTROL    │
-├───────────────────────────────────────────────────────────┼───────────────────┼───────────────┤
-│       SSID_NUM       │     APID      │     SSID_TYPE      │      N data       │     CRC16     │
-│        1 Byte        │    1 Byte     │       1 Byte       │       bytes       │    2 Bytes    │
-│       (0-255)        │    (0-63)     │       (0-3)        │     (N bytes)     │  (Software)   │
-└──────────────────────┴───────────────┴────────────────────┴───────────────────┴───────────────┘
-```
-
-### Description des octets de la trame radio
-
-| Position | Type | Nom du Champ | Description |
-| :--- | :--- | :--- | :--- |
-| **Octet 0** | `uint8_t` | `SSID_NUM` | ID ou numéro du tracker (de 0 à 255). |
-| **Octet 1** | `uint8_t` | `APID` | Identifiant du processus applicatif ou type de paquet (de 0 à 63). |
-| **Octet 2** | `uint8_t` | `SSID_TYPE` | Type de mission (`0` = FX, `1` = MF, `2` = BALLOON, `3` = OTHER). |
-| **Octets 3 à 2+N** | `uint8_t[]` | `Payload` | Charge utile contenant les données brutes des capteurs ($N$ octets). |
-| **Octets 3+N à 4+N** | `uint16_t` | `CRC16` | *(Option B uniquement)* Somme de contrôle logicielle de 2 octets en Little-Endian. |
+Pour consulter les schémas binaires complets, les descriptions détaillées de chaque octet et les tables d'encodage :
+👉 **[Consulter le Guide des Formats de Trames](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/FRAME_GUIDE.md)**
 
 ---
 
 ## Contrôle d'Intégrité (CRC) et de Liaison
 
 Pour garantir la fiabilité de la transmission des données de la fusée jusqu'à votre écran, deux niveaux de contrôle d'intégrité (CRC) sont appliqués :
-1. **Liaison Radio LoRa (Tracker ➔ Station Sol)** : CRC matériel géré directement par le silicium de la puce radio SX1276 (Option A, par défaut), ou CRC logiciel inséré dans la payload LoRa si le mode matériel est désactivé (Option B).
+1. **Liaison Radio LoRa (Tracker ➔ Station Sol)** : CRC matériel géré en silicium par le SX1276 (Option A, par défaut), ou CRC logiciel inséré dans la payload LoRa et validé en C++ par la station sol (Option B).
 2. **Liaison Série & Bluetooth (Station Sol ➔ PC)** : CRC logiciel calculé par l'ESP32 et vérifié à la réception par le PC (NectarMC ou Dashboard Web).
 
 Pour une explication détaillée de ces deux niveaux de sécurité et un guide pas-à-pas idéal pour les débutants :
 👉 **[Consulter le Guide complet sur les CRC](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/CRC_GUIDE.md)**
-
----
-
-## Structure de la trame série NectarMC (Sortie USB / Bluetooth)
-
-Les trames émises par la station sol vers le PC sur le port série USB et la liaison Bluetooth sont lues par le logiciel pour affichage et traitement. Elles ont la structure binaire suivante (taille totale : $13 + N$ octets) :
-
-```
-┌───────────────────────────────────────────┬───────────────────┬───────────────────────────────────────┬───────────────┐
-│                 HEADER                    │      PAYLOAD      │               METADATA                │     CONTROL   │
-├───────────────────────────────────────────┼───────────────────┼───────────────────────────────────────┼───────────────┤
-│   MAGIC     │  Id_mission  │ payload_size │      N data       │  RSSI   │   SNR   │     Timestamp     │     CRC16     │
-│   1 Byte    │   2 Bytes    │   1 Byte     │      bytes        │ 1 Byte  │ 1 Byte  │      4 Bytes      │    2 Bytes    │
-│    0xEB     │ (Little-End) │   (N bytes)  │                   │(int8_t) │(int8_t) │ (uint32_t Little-E)│ (Little-End)  │
-└─────────────┴──────────────┴──────────────┴───────────────────┴─────────┴─────────┴───────────────────┴───────────────┘
-```
-
-### Description des octets de la trame série
-
-| Position | Type | Nom du Champ | Description |
-| :--- | :--- | :--- | :--- |
-| **Octet 0** | `uint8_t` | `MAGIC` | Marqueur de synchronisation de début de trame. Toujours égal à `0xEB`. |
-| **Octets 1 à 2** | `uint16_t` | `Id_mission` | Identifiant unique de mission codé en Little-Endian. Regroupe sur 16 bits :<br>- Le type de tracker (`SSID_TYPE`, 2 bits de poids fort, bits 15-14)<br>- Le numéro du tracker (`SSID_NUM`, 8 bits, bits 13-6)<br>- L'identifiant de paquet (`APID`, 6 bits de poids faible, bits 5-0) |
-| **Octet 3** | `uint8_t` | `payload_size` | Longueur $N$ de la charge utile LoRa brute en octets. |
-| **Octets 4 à 3+N** | `uint8_t[]` | `Payload` | Données utiles brutes provenant directement du tracker LoRa ($N$ octets). |
-| **Octet 4+N** | `int8_t` | `RSSI` | Niveau de puissance du signal reçu en dBm. Entier signé (ex: `-85` dBm). |
-| **Octet 5+N** | `int8_t` | `SNR` | Rapport signal/bruit. Multiplié par 4 à l'émission pour encoder une précision de 0.25 dB (ex: `38` pour 9.5 dB, plage utile : -32 dB à +31.75 dB). |
-| **Octets 6+N à 9+N** | `uint32_t` | `Timestamp` | Horodatage de réception absolu (Epoch Unix en secondes) codé en Little-Endian. |
-| **Octets 10+N à 11+N** | `uint16_t` | `CRC16` | Somme de contrôle de validation (polynôme CCITT 0x1021, init 0xFFFF, Little-Endian) calculée sur l'ensemble Header, Payload et Métadonnées (de l'octet 0 à $9+N$ inclus). |
-| **Octet 12+N** | `char` | `Newline` | Caractère retour à la ligne `\n` (`0x0A`) facilitant la détection de fin et la journalisation brute. |
-
-> [!TIP]
-> **Gestion intelligente du temps :**
-> L'ajout du **Timestamp** permet de dater précisément chaque trame sans dépendre de l'horloge système du PC au moment du traitement. Si la station sol n'a pas encore été synchronisée (ex. fonctionnement autonome), l'horloge RTC démarre par défaut à l'époque 0 (`1er janvier 1970`). L'application Web Ground Station synchronise automatiquement la RTC de la station à la connexion en lui transmettant l'époque Unix courante de l'ordinateur.
 
 ---
 

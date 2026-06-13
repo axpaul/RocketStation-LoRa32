@@ -35,9 +35,14 @@ C'est l'option standard configurée au démarrage de la station.
 
 ### Option B : Le CRC Logiciel (Si le CRC matériel est désactivé)
 
-*   **Qui fait le travail ?** Le **code informatique** écrit par l'utilisateur sur le microcontrôleur du tracker, et le **code de décodage final** sur l'ordinateur.
-*   **Fonctionnement** : Si le CRC matériel est désactivé (`AT+CRC=0`), la puce radio SX1276 n'effectue aucun test et accepte aveuglément tous les paquets (y compris du bruit ou des trames corrompues). Pour sécuriser la transmission, le code de l'émetteur doit calculer lui-même une somme de contrôle CRC16 dans son code C++ et l'ajouter manuellement dans la charge utile de données (Payload).
-*   **Pourquoi faire cela ?** Le mode matériel jette impitoyablement tout paquet dès qu'un seul bit est faux. Le mode logiciel permet de recevoir des paquets partiellement corrompus en vol pour tenter de les analyser ou d'en corriger les erreurs logiciellement côté PC.
+*   **Qui fait le travail ?** Le **code informatique** écrit par l'utilisateur sur le microcontrôleur du tracker (qui calcule et ajoute le CRC à l'émission) et le **code de la station sol** (qui le vérifie en logiciel avant de l'envoyer au PC).
+*   **Fonctionnement** : 
+    * Si le CRC matériel est désactivé (`AT+CRC=0`), la puce radio SX1276 n'effectue aucun test en silicium et accepte tous les paquets reçus. 
+    * Pour sécuriser la transmission, le code de votre émetteur (tracker) doit calculer une somme de contrôle CRC16 (polynôme CCITT) et l'insérer en queue du paquet radio LoRa.
+    * À la réception, l'ESP32 de la station sol lit les données et effectue le calcul du CRC16 logiciel en C++ (voir [radio.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/radio.cpp#L295-L318)). 
+        * *Si le CRC logiciel est valide* : L'ESP32 valide le paquet, retire les 2 octets du CRC logiciel de la charge utile (pour que la charge utile de données soit identique au mode matériel pour le PC), et transmet le reste.
+        * *Si le CRC logiciel est invalide* : Il incrémente le compteur d'erreurs (`errCount`), met à jour l'afficheur OLED avec le message `"CRC Error (Soft)"` et rejette silencieusement le paquet.
+*   **Pourquoi faire cela ?** Bien que la station sol filtre désormais les trames corrompues dans les deux modes (matériel et logiciel) pour éviter d'envoyer des données erronées au PC, utiliser un CRC logiciel LoRa permet à l'émetteur de conserver un contrôle applicatif complet sur son intégrité ou de contourner les limitations de certaines puces radio.
 
 ---
 
@@ -59,5 +64,5 @@ Une fois que la station sol a reçu un paquet radio valide, elle l'encapsule ave
 | Étape de Liaison | Type de CRC | Acteur Principal | Que se passe-t-il en cas d'erreur ? |
 | :--- | :--- | :--- | :--- |
 | **1. Radio LoRa** (Option A) | **Matériel** | Puce Semtech SX1276 | Le paquet est supprimé directement en silicium. L'ESP32 ne le reçoit pas. |
-| **1. Radio LoRa** (Option B) | **Logiciel** | Code émetteur & PC | Le paquet corrompu est reçu par l'ESP32 et transmis au PC, le PC décide quoi en faire. |
+| **1. Radio LoRa** (Option B) | **Logiciel** | Code émetteur & ESP32 | L'ESP32 vérifie le CRC logiciel. S'il est faux, il affiche une erreur sur l'OLED et détruit le paquet. S'il est valide, il retire le CRC et l'envoie au PC. |
 | **2. Série USB / BT** | **Logiciel** | Code ESP32 & NectarMC | Le logiciel sur le PC ignore la trame série pour éviter d'afficher des données aberrantes. |
