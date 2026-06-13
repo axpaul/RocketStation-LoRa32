@@ -12,7 +12,7 @@ Cette version du logiciel est optimisée pour être compatible avec le logiciel 
 
 ---
 
-## 📸 Aperçu du Matériel
+## Aperçu du Matériel
 
 Voici les vues de la carte de développement ainsi que son brochage (Pinout) et ses dimensions :
 
@@ -23,11 +23,11 @@ Voici les vues de la carte de développement ainsi que son brochage (Pinout) et 
   <img src="Image/P-SIZE_600x600.jpg" alt="Board Dimensions" width="500" />
 </p>
 
-👉 **[Télécharger la Fiche Technique et le Schéma PDF Officiel de la TTGO T3 V1.6.1](T3_V1.6.1.pdf)**
+**[Télécharger la Fiche Technique et le Schéma PDF Officiel de la TTGO T3 V1.6.1](T3_V1.6.1.pdf)**
 
 ---
 
-## 🚀 Fonctionnalités principales
+## Fonctionnalités principales
 
 *   **Compatibilité NectarMC** : Génère à la volée des trames binaires série structurées (Magic byte `0xEB`, `Id_mission` codé sur 16 bits en Little-Endian, calcul du `CRC16-CCITT` en Little-Endian) prêtes à être décodées et affichées en temps réel par le logiciel [NectarMC](https://github.com/mlavardin/NectarMC).
 *   **Réception LoRa dynamique** : Supporte des longueurs de paquets LoRa variables de manière totalement transparente.
@@ -37,7 +37,7 @@ Voici les vues de la carte de développement ainsi que son brochage (Pinout) et 
 
 ---
 
-## 📺 Description de l'Affichage OLED et des Menus
+## Description de l'Affichage OLED et des Menus
 
 L'écran OLED (128x64 pixels) affiche des informations complètes sur l'état de fonctionnement du récepteur. Au démarrage, il affiche une **animation de pylône radio émetteur** avec des ondes électromagnétiques clignotantes, puis affiche un retour visuel sur l'état de la carte SD (un **icône de coche de validation** en cas de succès, ou un **triangle d'alerte clignotant** si la carte est absente/défectueuse).
 
@@ -59,16 +59,28 @@ Les informations détaillées s'affichent sous forme de deux écrans alternant a
 
 ---
 
-## 🛰️ Structure des trames LoRa (Émetteurs)
+## Structure des trames LoRa (Émetteurs)
 
-Pour que la station puisse router dynamiquement les trames vers le logiciel [NectarMC](https://github.com/mlavardin/NectarMC), les émetteurs/trackers doivent envoyer un paquet radio LoRa structuré comme suit :
+Pour que la station puisse router dynamiquement les trames vers le logiciel [NectarMC](https://github.com/mlavardin/NectarMC), les émetteurs/trackers doivent envoyer un paquet radio LoRa structuré de la manière suivante (taille totale : $3 + N$ octets) :
+
+```
+┌───────────────────────────────────────────────────────────┬───────────────────┐
+│                          HEADER                           │      PAYLOAD      │
+├───────────────────────────────────────────────────────────┼───────────────────┤
+│       SSID_NUM       │     APID      │     SSID_TYPE      │      N data       │
+│        1 Byte        │    1 Byte     │       1 Byte       │       bytes       │
+│       (0-255)        │    (0-63)     │       (0-3)        │     (N bytes)     │
+└──────────────────────┴───────────────┴────────────────────┴───────────────────┘
+```
+
+### Description des octets de la trame radio
 
 | Position | Type | Rôle | Description |
 | :--- | :--- | :--- | :--- |
-| **Octet 0** | `uint8_t` | `SSID_NUM` | ID ou numéro de la mission (de 0 à 255) |
-| **Octet 1** | `uint8_t` | `APID` | Type d'application / de paquet (de 0 à 63) |
-| **Octet 2** | `uint8_t` | `SSID_TYPE` | Type de mission (`0` = FX, `1` = MF, `2` = BALLOON, `3` = OTHER) |
-| **Octets 3 à L-1** | `uint8_t[]` | `Payload` | Données brutes des capteurs (taille variable L-3) |
+| **Octet 0** | `uint8_t` | `SSID_NUM` | ID ou numéro du tracker (de 0 à 255). |
+| **Octet 1** | `uint8_t` | `APID` | Identifiant du processus applicatif ou type de paquet (de 0 à 63). |
+| **Octet 2** | `uint8_t` | `SSID_TYPE` | Type de mission (`0` = FX, `1` = MF, `2` = BALLOON, `3` = OTHER). |
+| **Octets 3 à N+2** | `uint8_t[]` | `Payload` | Charge utile contenant les données brutes des capteurs ($N$ octets). |
 
 > [!NOTE]
 > **Contrôle d'intégrité (CRC) de la liaison radio :**
@@ -78,7 +90,7 @@ Pour que la station puisse router dynamiquement les trames vers le logiciel [Nec
 
 ---
 
-## 💻 Format de trame série NectarMC (Sortie USB / Bluetooth)
+## Format de trame série NectarMC (Sortie USB / Bluetooth)
 
 Les trames émises par la station sol vers le PC sur le port série USB et la liaison Bluetooth sont lues par le logiciel pour affichage et traitement. Elles ont la structure binaire suivante (taille totale : $13 + N$ octets) :
 
@@ -112,7 +124,7 @@ Les trames émises par la station sol vers le PC sur le port série USB et la li
 
 ---
 
-## 🎮 Commandes de Configuration AT Interactives (Série / Bluetooth)
+## Commandes de Configuration AT (Série / Bluetooth)
 
 La station sol dispose d'un décodeur de commandes AT standard permettant de configurer la radio à chaud (en USB à **115200 bauds** ou sans fil via liaison **Bluetooth Classic (SPP)** avec l'appareil **`Nectar-RxStation-XXXX`**).
 
@@ -122,7 +134,7 @@ Chaque commande doit se terminer par un retour chariot (`\n` ou `\r`). Les répo
 > **Sécurité Anti-Conflit :**
 > Toutes les commandes doivent obligatoirement commencer par le préfixe **`AT`**. Tout flux série ou Bluetooth ne débutant pas par ces deux lettres est silencieusement ignoré. Cela évite tout conflit avec des trames de données binaires entrantes ou du bruit sur le port.
 
-### 📋 Liste des commandes AT disponibles
+### Liste des commandes AT disponibles
 
 | Commande | Rôle | Format de Réponse & Exemples |
 | :--- | :--- | :--- |
@@ -142,7 +154,7 @@ Chaque commande doit se terminer par un retour chariot (`\n` ou `\r`). Les répo
 | **`AT+SAVE`** | Persiste la configuration active dans la Flash (NVS) | Renvoie `OK`. Elle sera rechargée automatiquement au boot. |
 | **`AT+RESET`** | Efface la configuration personnalisée et redémarre | Renvoie `OK`, puis réinitialise la carte aux paramètres d'usine. |
 
-### ⚠️ Retours d'erreurs et statuts
+### Retours d'erreurs et statuts
 
 * **Succès général** :
   * `OK`
@@ -160,7 +172,7 @@ Chaque commande doit se terminer par un retour chariot (`\n` ou `\r`). Les répo
 
 ---
 
-## 💾 Structure des logs (Carte SD)
+## Structure des logs (Carte SD)
 
 Les données sont enregistrées dans un fichier CSV avec la structure suivante :
 `Timestamp,RSSI,SNR,SSID,APID,RawFrame`
@@ -194,7 +206,7 @@ graph TD
 
 ---
 
-## 🛠️ Compilation et Flashage
+## Compilation et Flashage
 
 Le projet utilise **PlatformIO**. Pour compiler et flasher le récepteur :
 
@@ -209,28 +221,28 @@ pio run -t upload
 
 ---
 
-## 🌐 Outils de l'Écosystème NectarMC
+## Outils de l'Écosystème NectarMC
 
 > [!IMPORTANT]
 > Pour exploiter pleinement votre station sol RocketStation-LoRa32, vous pouvez utiliser les deux solutions logicielles officielles :
 > 
-> ### 1. ⚡ Console Web de Contrôle & Flasheur en Ligne
+> ### 1. Console Web de Contrôle & Flasheur en Ligne
 > Une interface web moderne et statique est disponible sans aucune installation requise. Elle communique en direct avec votre récepteur en USB :
 > 👉 **[Ouvrir la Nectar Rx Station Web Console (Live)](https://axpaul.github.io/RocketStation-LoRa32/)**
 > 
 > Cette console web vous permet de :
-> *   **🔌 Piloter la station par port COM USB** : Connectez votre récepteur LoRa32 en un clic et configurez-le dynamiquement (fréquence, Spreading Factor, Bande Passante) à l'aide de boutons simples ou de la console AT interactive.
-> *   **🛸 Suivre les Trackers Actifs en temps réel** : La page liste automatiquement tous les émetteurs détectés (fusées, minifusées, ballons...) avec leurs types de mission, APID, nombre de trames et charges utiles. Elle détecte et marque automatiquement comme `PERDU` les trackers inactifs pendant plus de 15 secondes.
-> *   **📈 Tracer le débit de données** : Un graphique SVG en temps réel affiche le flux instantané de données reçues.
-> *   **⚡ Flasher le firmware en ligne** : Mettez à jour le micrologiciel de votre carte TTGO avec la version **v1.3.1** native (en 868 ou 433 MHz) directement en un clic depuis le navigateur grâce à `esptool-js`.
+> *   **Piloter la station par port COM USB** : Connectez votre récepteur LoRa32 en un clic et configurez-le dynamiquement (fréquence, Spreading Factor, Bande Passante) à l'aide de boutons simples ou de la console AT interactive.
+> *   **Suivre les Trackers Actifs en temps réel** : La page liste automatiquement tous les émetteurs détectés (fusées, minifusées, ballons...) avec leurs types de mission, APID, nombre de trames et charges utiles. Elle détecte et marque automatiquement comme `PERDU` les trackers inactifs pendant plus de 15 secondes.
+> *   **Tracer le débit de données** : Un graphique SVG en temps réel affiche le flux instantané de données reçues.
+> *   **Flasher le firmware en ligne** : Mettez à jour le micrologiciel de votre carte TTGO avec la version **v1.3.1** native (en 868 ou 433 MHz) directement en un clic depuis le navigateur grâce à `esptool-js`.
 > 
-> ### 2. 🖥️ Logiciel de Traitement & Visualisation 3D : NectarMC
+> ### 2. Logiciel de Traitement & Visualisation 3D : NectarMC
 > La station sol est entièrement configurée pour transmettre les données de vol en temps réel vers le logiciel principal de visualisation de la télémétrie :
 > 👉 **[Découvrir NectarMC sur GitHub](https://github.com/mlavardin/NectarMC)**
 
 ---
 
-## 👥 Auteur
+## Auteur
 
 *   **Paul Miailhe ([axpaul](https://github.com/axpaul))** :
     *   **Concepteur principal** du projet matériel et logiciel de la station de réception sol RocketStation-LoRa32.
