@@ -10,7 +10,7 @@ let isConnected = false;
 let rxBuffer = [];
 let packetIndex = 0;
 let readLoopPromise = null; // Promesse pour suivre la fin de la boucle de lecture
-let activeTrackers = {};    // Dictionnaire des émetteurs détectés : { name: { typeLabel, lastApid, packetCount, lastSeen, lastPayloadHex } }
+let activeTrackers = {};    // Dictionnaire des émetteurs détectés : { name: { typeLabelKey, lastApid, packetCount, lastSeen, lastPayloadHex } }
 let allReceivedFrames = []; // Historique complet pour export CSV (capé à 5000 trames)
 
 // Variables pour le calcul de débit et le graphique
@@ -24,6 +24,262 @@ let currentConfig = {
   sf: 8,
   bw: 250.0
 };
+
+// Variable globale pour stocker le nom du port et la langue
+let currentPortName = '';
+let currentLang = 'fr';
+
+// Dictionnaire de traduction
+const i18n = {
+  fr: {
+    badge_disconnected: "Déconnecté",
+    badge_connected: "Connecté",
+    header_title: "NECTAR RX STATION",
+    header_subtitle: "Web Control Center v1.3.1",
+    conn_title: "🔌 Liaison Série USB",
+    conn_baudrate: "Vitesse de transmission (Baud) :",
+    conn_btn_connect: "Connexion",
+    conn_btn_disconnect: "Déconnexion",
+    conn_status_label: "Statut :",
+    conn_no_device: "Aucun appareil connecté",
+    conn_port_prefix: "Port : ",
+    conn_voice_alerts: "🎙️ Synthèse Vocale (Alertes Tracker)",
+    config_title: "⚙️ Paramètres Radio",
+    config_frequency: "Fréquence (MHz) :",
+    config_sf: "Spreading Factor (SF) :",
+    config_bw: "Bande Passante (BW) :",
+    config_btn_read: "Actualiser",
+    config_btn_write: "Appliquer",
+    config_btn_save: "Sauver NVS",
+    config_btn_reset: "Reset Usine",
+    stats_title: "📊 Qualité de Liaison",
+    stats_rssi: "RSSI (dBm)",
+    stats_snr: "SNR (dB)",
+    stats_count: "Trames Reçues",
+    flash_title: "⚡ Mise à Jour Firmware",
+    flash_desc: "Flashez directement la version <strong>v1.3.1</strong> depuis votre navigateur par port USB.",
+    flash_band: "Bande Radio native de la carte :",
+    flash_band_868: "868 MHz (Europe)",
+    flash_band_433: "433 MHz",
+    flash_btn_flash: "Flasher la carte (v1.3.1)",
+    flash_status_label: "Statut :",
+    flash_status_waiting: "Attente...",
+    trackers_title: "🛸 Émetteurs Détectés (Active Trackers)",
+    btn_reset: "Réinitialiser",
+    th_tracker: "Tracker (SSID)",
+    th_mission_type: "Type de Mission",
+    th_last_apid: "Dernier APID",
+    th_received_frames: "Trames Reçues",
+    th_last_activity: "Dernière Activité",
+    th_status: "Statut",
+    th_payload: "Charge Utile (Hex)",
+    trackers_empty: "Aucun émetteur détecté pour l'instant. Branchez le récepteur LoRa pour intercepter les signaux.",
+    telemetry_title: "📡 Trames reçues en direct (NectarMC)",
+    telemetry_btn_export: "Exporter CSV",
+    btn_clear: "Effacer",
+    th_index: "Index",
+    th_timestamp: "Horodatage",
+    th_apid: "APID",
+    th_size: "Taille",
+    th_rssi: "RSSI",
+    th_snr: "SNR",
+    telemetry_empty: "Aucune trame reçue pour l'instant. Branchez le port série et mettez sous tension vos trackers.",
+    terminal_title: "📟 Console & Terminal",
+    terminal_placeholder: "Tapez une commande AT (ex: AT, AT+FREQ?, AT+CFG)...",
+    btn_send: "Envoyer",
+    footer_credit: "Conçu et développé par",
+    
+    // Dialogues et logs
+    alert_browser_unsupported: "Votre navigateur ne supporte pas l'API Web Serial. Veuillez utiliser Google Chrome, Microsoft Edge ou Opera.",
+    confirm_factory_reset: "Voulez-vous restaurer les paramètres d'usine ? La carte va redémarrer.",
+    alert_no_frames_export: "Aucune trame en mémoire à exporter.",
+    alert_monitor_active_disconnect: "La liaison moniteur série est active. Veuillez cliquer sur 'Déconnexion' avant de lancer le flash du firmware.",
+    log_flash_port_select: "Sélection du port série pour le flash (choisissez le port de votre carte)...",
+    log_port_opening: "Ouverture du port série à {baud} baud...",
+    log_conn_success: "Connexion établie avec succès.",
+    log_conn_error: "Erreur de connexion : {message}",
+    log_disconnected: "Liaison série déconnectée.",
+    log_read_error: "Erreur de lecture : {message}",
+    log_send_error: "Erreur d'envoi : {message}",
+    log_physical_disconnect: "Le port série a été déconnecté physiquement.",
+    log_write_flash_start: "Début de l'écriture de l'application à 0x10000...",
+    log_update_complete_reboot: "Mise à jour terminée ! Redémarrage de la carte...",
+    log_flash_error: "Erreur lors du flash : {message}",
+    flash_status_connecting: "Connexion à l'ESP32...",
+    flash_status_syncing: "Synchronisation de la carte...",
+    flash_status_chip: "Puce détectée : {chip}",
+    log_download_bin: "Téléchargement du firmware depuis {url}...",
+    log_download_bin_failed: "Impossible de récupérer le binaire ({status})",
+    flash_status_writing: "Écriture en cours (flash)...",
+    flash_status_success: "Flash Réussi !",
+    flash_status_failed: "ÉCHEC !",
+    
+    // Télémétrie dynamique
+    mission_rocket: "Fusée (FX)",
+    mission_minirocket: "Minifusée (MF)",
+    mission_balloon: "Ballon (BALLOON)",
+    mission_other: "Autre (OTHER)",
+    unit_bytes: "octets",
+    status_active: "ACTIF",
+    status_lost: "PERDU",
+    
+    // Alertes vocales
+    voice_new_tracker: "Nouveau tracker détecté, {name}",
+    voice_tracker_back: "Tracker {name} de retour en ligne",
+    voice_tracker_lost: "Alerte, tracker {name} perdu"
+  },
+  en: {
+    badge_disconnected: "Disconnected",
+    badge_connected: "Connected",
+    header_title: "NECTAR RX STATION",
+    header_subtitle: "Web Control Center v1.3.1",
+    conn_title: "🔌 USB Serial Link",
+    conn_baudrate: "Baud Rate:",
+    conn_btn_connect: "Connect",
+    conn_btn_disconnect: "Disconnect",
+    conn_status_label: "Status:",
+    conn_no_device: "No device connected",
+    conn_port_prefix: "Port: ",
+    conn_voice_alerts: "🎙️ Voice Synthesis (Tracker Alerts)",
+    config_title: "⚙️ Radio Settings",
+    config_frequency: "Frequency (MHz):",
+    config_sf: "Spreading Factor (SF):",
+    config_bw: "Bandwidth (BW):",
+    config_btn_read: "Refresh",
+    config_btn_write: "Apply",
+    config_btn_save: "Save NVS",
+    config_btn_reset: "Factory Reset",
+    stats_title: "📊 Link Quality",
+    stats_rssi: "RSSI (dBm)",
+    stats_snr: "SNR (dB)",
+    stats_count: "Received Frames",
+    flash_title: "⚡ Firmware Update",
+    flash_desc: "Flash version <strong>v1.3.1</strong> directly from your browser via USB port.",
+    flash_band: "Board's native Radio Band:",
+    flash_band_868: "868 MHz (Europe)",
+    flash_band_433: "433 MHz",
+    flash_btn_flash: "Flash Board (v1.3.1)",
+    flash_status_label: "Status:",
+    flash_status_waiting: "Waiting...",
+    trackers_title: "🛸 Detected Transmitters (Active Trackers)",
+    btn_reset: "Reset",
+    th_tracker: "Tracker (SSID)",
+    th_mission_type: "Mission Type",
+    th_last_apid: "Last APID",
+    th_received_frames: "Received Frames",
+    th_last_activity: "Last Activity",
+    th_status: "Status",
+    th_payload: "Payload (Hex)",
+    trackers_empty: "No transmitter detected yet. Connect the LoRa receiver to intercept signals.",
+    telemetry_title: "📡 Live received frames (NectarMC)",
+    telemetry_btn_export: "Export CSV",
+    btn_clear: "Clear",
+    th_index: "Index",
+    th_timestamp: "Timestamp",
+    th_apid: "APID",
+    th_size: "Size",
+    th_rssi: "RSSI",
+    th_snr: "SNR",
+    telemetry_empty: "No frames received yet. Connect the serial port and power on your trackers.",
+    terminal_title: "📟 Console & Terminal",
+    terminal_placeholder: "Type an AT command (e.g. AT, AT+FREQ?, AT+CFG)...",
+    btn_send: "Send",
+    footer_credit: "Designed and developed by",
+    
+    // Dialogues and logs
+    alert_browser_unsupported: "Your browser does not support the Web Serial API. Please use Google Chrome, Microsoft Edge, or Opera.",
+    confirm_factory_reset: "Do you want to restore factory settings? The board will reboot.",
+    alert_no_frames_export: "No frames in memory to export.",
+    alert_monitor_active_disconnect: "The serial monitor link is active. Please click 'Disconnect' before starting the firmware flash.",
+    log_flash_port_select: "Selecting the serial port for flash (choose your board's port)...",
+    log_port_opening: "Opening serial port at {baud} baud...",
+    log_conn_success: "Connection established successfully.",
+    log_conn_error: "Connection error: {message}",
+    log_disconnected: "Serial link disconnected.",
+    log_read_error: "Read error: {message}",
+    log_send_error: "Send error: {message}",
+    log_physical_disconnect: "The serial port was physically disconnected.",
+    log_write_flash_start: "Starting application write at 0x10000...",
+    log_update_complete_reboot: "Update complete! Rebooting board...",
+    log_flash_error: "Error during flash: {message}",
+    flash_status_connecting: "Connecting to ESP32...",
+    flash_status_syncing: "Synchronizing board...",
+    flash_status_chip: "Chip detected: {chip}",
+    log_download_bin: "Downloading firmware from {url}...",
+    log_download_bin_failed: "Could not fetch the binary ({status})",
+    flash_status_writing: "Writing in progress (flash)...",
+    flash_status_success: "Flash Success!",
+    flash_status_failed: "FAILED!",
+    
+    // Dynamic telemetry
+    mission_rocket: "Rocket (FX)",
+    mission_minirocket: "Mini-rocket (MF)",
+    mission_balloon: "Balloon (BALLOON)",
+    mission_other: "Other (OTHER)",
+    unit_bytes: "bytes",
+    status_active: "ACTIVE",
+    status_lost: "LOST",
+    
+    // Vocal alerts
+    voice_new_tracker: "New tracker detected, {name}",
+    voice_tracker_back: "Tracker {name} back online",
+    voice_tracker_lost: "Alert, tracker {name} lost"
+  }
+};
+
+function getTranslation(key, replacements = {}) {
+  let text = i18n[currentLang]?.[key] || i18n['fr']?.[key] || key;
+  for (const [placeholder, value] of Object.entries(replacements)) {
+    text = text.replace(`{${placeholder}}`, value);
+  }
+  return text;
+}
+
+function setLanguage(lang) {
+  if (lang !== 'fr' && lang !== 'en') {
+    lang = 'fr';
+  }
+  currentLang = lang;
+  localStorage.setItem('nectar_lang', lang);
+  
+  // Mettre à jour les éléments statiques avec data-i18n
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (i18n[lang] && i18n[lang][key]) {
+      if (i18n[lang][key].includes('<') && i18n[lang][key].includes('>')) {
+        el.innerHTML = i18n[lang][key];
+      } else {
+        el.textContent = i18n[lang][key];
+      }
+    }
+  });
+
+  // Mettre à jour les placeholders
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (i18n[lang] && i18n[lang][key]) {
+      el.placeholder = i18n[lang][key];
+    }
+  });
+
+  // Gérer la classe active sur les boutons
+  const btnFr = document.getElementById('btn-lang-fr');
+  const btnEn = document.getElementById('btn-lang-en');
+  if (btnFr && btnEn) {
+    if (lang === 'fr') {
+      btnFr.classList.add('active');
+      btnEn.classList.remove('active');
+    } else {
+      btnEn.classList.add('active');
+      btnFr.classList.remove('active');
+    }
+  }
+
+  // Mettre à jour les textes dynamiques de connexion et des tableaux
+  updateConnectionUI(isConnected, currentPortName);
+  renderTelemetryTable();
+  updateTrackersTable();
+}
 
 // ============================================================================
 // Sélection des éléments du DOM
@@ -91,7 +347,7 @@ function speak(text) {
   
   if ('speechSynthesis' in window) {
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'fr-FR';
+    utterance.lang = currentLang === 'fr' ? 'fr-FR' : 'en-US';
     window.speechSynthesis.speak(utterance);
   }
 }
@@ -113,12 +369,13 @@ function logToTerminal(message, type = 'cmd-out') {
 
 function updateConnectionUI(connected, name = '') {
   isConnected = connected;
+  currentPortName = name;
   if (connBadge) {
-    connBadge.textContent = connected ? 'Connecté' : 'Déconnecté';
+    connBadge.textContent = connected ? getTranslation('badge_connected') : getTranslation('badge_disconnected');
     connBadge.className = connected ? 'badge connected' : 'badge disconnected';
   }
   if (lblPortName) {
-    lblPortName.textContent = connected ? `Port : ${name}` : 'Aucun appareil connecté';
+    lblPortName.textContent = connected ? getTranslation('conn_port_prefix') + name : getTranslation('conn_no_device');
   }
   
   setElementDisabled(btnConnect, connected);
@@ -154,14 +411,14 @@ async function connectSerial() {
       port = await navigator.serial.requestPort();
       const baud = selectBaudrate ? parseInt(selectBaudrate.value, 10) : 115200;
       
-      logToTerminal(`Ouverture du port série à ${baud} baud...`, 'sys-out');
+      logToTerminal(getTranslation('log_port_opening', { baud: baud }), 'sys-out');
       await port.open({ baudRate: baud });
       
       const portInfo = port.getInfo();
       const portName = `USB Vendor 0x${(portInfo.usbVendorId || 0).toString(16)} Product 0x${(portInfo.usbProductId || 0).toString(16)}`;
       
       updateConnectionUI(true, portName);
-      logToTerminal('Connexion établie avec succès.', 'sys-out');
+      logToTerminal(getTranslation('log_conn_success'), 'sys-out');
 
       // Démarrer la boucle de lecture
       readLoopPromise = readSerialLoop();
@@ -174,11 +431,11 @@ async function connectSerial() {
       }, 6000);
 
     } catch (err) {
-      logToTerminal(`Erreur de connexion : ${err.message}`, 'sys-out');
+      logToTerminal(getTranslation('log_conn_error', { message: err.message }), 'sys-out');
       console.error(err);
     }
   } else {
-    alert("Votre navigateur ne supporte pas l'API Web Serial. Veuillez utiliser Google Chrome, Microsoft Edge ou Opera.");
+    alert(getTranslation('alert_browser_unsupported'));
   }
 }
 
@@ -210,7 +467,7 @@ async function disconnectSerial() {
   }
 
   updateConnectionUI(false);
-  logToTerminal('Liaison série déconnectée.', 'sys-out');
+  logToTerminal(getTranslation('log_disconnected'), 'sys-out');
 }
 
 async function readSerialLoop() {
@@ -233,7 +490,7 @@ async function readSerialLoop() {
           }
         }
       } catch (err) {
-        logToTerminal(`Erreur de lecture : ${err.message}`, 'sys-out');
+        logToTerminal(getTranslation('log_read_error', { message: err.message }), 'sys-out');
         break;
       } finally {
         if (reader) {
@@ -263,7 +520,7 @@ async function sendSerialText(text) {
     
     logToTerminal(text, 'cmd-in');
   } catch (err) {
-    logToTerminal(`Erreur d'envoi : ${err.message}`, 'sys-out');
+    logToTerminal(getTranslation('log_send_error', { message: err.message }), 'sys-out');
     console.error("Erreur sendSerialText:", err);
   }
 }
@@ -339,6 +596,43 @@ function parseRxBuffer() {
   }
 }
 
+// Rendu dynamique du tableau de télémétrie (gère le changement de langue)
+function renderTelemetryTable() {
+  if (!tableTelemetryBody) return;
+  
+  // Vider le corps du tableau
+  tableTelemetryBody.innerHTML = '';
+  
+  if (allReceivedFrames.length === 0) {
+    if (rowEmpty) {
+      rowEmpty.style.display = 'table-row';
+      tableTelemetryBody.appendChild(rowEmpty);
+    }
+    return;
+  }
+  
+  if (rowEmpty) {
+    rowEmpty.style.display = 'none';
+  }
+  
+  // Afficher les 50 dernières trames reçues (les plus récentes en premier)
+  const framesToShow = allReceivedFrames.slice(-50).reverse();
+  framesToShow.forEach(f => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${f.index}</td>
+      <td>${f.timestamp}</td>
+      <td><span class="badge connected">${f.tracker}</span></td>
+      <td>${f.apid}</td>
+      <td>${f.size} ${getTranslation('unit_bytes')}</td>
+      <td>${f.rssi} dBm</td>
+      <td>${f.snr} dB</td>
+      <td style="font-family: var(--font-mono); color: var(--color-cyan); word-break: break-all;">${f.payload}</td>
+    `;
+    tableTelemetryBody.appendChild(tr);
+  });
+}
+
 // Décodage des trames NectarMC
 function decodeNectarFrame(frame) {
   packetIndex++;
@@ -360,16 +654,16 @@ function decodeNectarFrame(frame) {
   const snr = rawSnr >= 128 ? rawSnr - 256 : rawSnr;
   
   let ssidPrefix = 'OTHER';
-  let missionTypeLabel = 'Autre (OTHER)';
+  let missionTypeLabelKey = 'mission_other';
   if (ssidType === 0) {
     ssidPrefix = 'FX';
-    missionTypeLabel = 'Fusée (FX)';
+    missionTypeLabelKey = 'mission_rocket';
   } else if (ssidType === 1) {
     ssidPrefix = 'MF';
-    missionTypeLabel = 'Minifusée (MF)';
+    missionTypeLabelKey = 'mission_minirocket';
   } else if (ssidType === 2) {
     ssidPrefix = 'BALLOON';
-    missionTypeLabel = 'Ballon (BALLOON)';
+    missionTypeLabelKey = 'mission_balloon';
   }
   
   const trackerName = `${ssidPrefix}${ssidNum}`;
@@ -390,50 +684,25 @@ function decodeNectarFrame(frame) {
     allReceivedFrames.shift();
   }
   
-  // Ajouter au tableau de télémétrie
-  if (rowEmpty) {
-    rowEmpty.style.display = 'none';
-  }
-  
-  if (tableTelemetryBody) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${packetIndex}</td>
-      <td>${timestamp}</td>
-      <td><span class="badge connected">${trackerName}</span></td>
-      <td>${apid}</td>
-      <td>${payloadSize - 2} octets</td>
-      <td>${rssi} dBm</td>
-      <td>${snr} dB</td>
-      <td style="font-family: var(--font-mono); color: var(--color-cyan); word-break: break-all;">${bytesToHex(payload)}</td>
-    `;
-    
-    // Insérer en haut de la table (trames les plus récentes en premier)
-    tableTelemetryBody.insertBefore(tr, tableTelemetryBody.firstChild);
-    
-    // Limiter le nombre de lignes à 50 pour la performance DOM
-    if (tableTelemetryBody.children.length > 50) {
-      tableTelemetryBody.removeChild(tableTelemetryBody.lastChild);
-    }
-  }
+  renderTelemetryTable();
 
   // Mettre à jour la classification des trackers
   const isNew = !activeTrackers[trackerName];
   if (isNew) {
     activeTrackers[trackerName] = {
       name: trackerName,
-      typeLabel: missionTypeLabel,
+      typeLabelKey: missionTypeLabelKey,
       lastApid: apid,
       packetCount: 0,
       lastSeen: Date.now(),
       lastPayloadHex: bytesToHex(payload),
       isLost: false
     };
-    speak(`Nouveau tracker détecté, ${trackerName.split('').join(' ')}`);
+    speak(getTranslation('voice_new_tracker', { name: trackerName.split('').join(' ') }));
   } else {
     if (activeTrackers[trackerName].isLost) {
       activeTrackers[trackerName].isLost = false;
-      speak(`Tracker ${trackerName.split('').join(' ')} de retour en ligne`);
+      speak(getTranslation('voice_tracker_back', { name: trackerName.split('').join(' ') }));
     }
   }
   
@@ -479,10 +748,10 @@ function updateTrackersTable() {
     
     if (isLost && !tracker.isLost) {
       tracker.isLost = true;
-      speak(`Alerte, tracker ${name.split('').join(' ')} perdu`);
+      speak(getTranslation('voice_tracker_lost', { name: name.split('').join(' ') }));
     }
     
-    const statusText = isLost ? 'PERDU' : 'ACTIF';
+    const statusText = isLost ? getTranslation('status_lost') : getTranslation('status_active');
     const statusClass = isLost ? 'badge disconnected' : 'badge connected';
     
     const timeString = new Date(tracker.lastSeen).toLocaleTimeString();
@@ -495,7 +764,7 @@ function updateTrackersTable() {
     
     row.innerHTML = `
       <td><span class="badge connected">${name}</span></td>
-      <td>${tracker.typeLabel}</td>
+      <td>${getTranslation(tracker.typeLabelKey)}</td>
       <td>${tracker.lastApid}</td>
       <td>${tracker.packetCount}</td>
       <td>${timeString}</td>
@@ -682,7 +951,7 @@ if (terminalForm) {
 // Exporte les trames enregistrées en CSV
 function exportTelemetryToCSV() {
   if (allReceivedFrames.length === 0) {
-    alert("Aucune trame en mémoire à exporter.");
+    alert(getTranslation('alert_no_frames_export'));
     return;
   }
   
@@ -716,13 +985,13 @@ async function flashFirmware() {
   const binUrl = `binaries/firmware_bluetooth_${band}.bin`;
   
   if (isConnected) {
-    alert("La liaison moniteur série est active. Veuillez cliquer sur 'Déconnexion' avant de lancer le flash du firmware.");
+    alert(getTranslation('alert_monitor_active_disconnect'));
     return;
   }
   
   setElementDisabled(btnFlash, true);
   if (flashProgressContainer) flashProgressContainer.classList.remove('hidden');
-  if (lblFlashStatus) lblFlashStatus.textContent = "Connexion à l'ESP32...";
+  if (lblFlashStatus) lblFlashStatus.textContent = getTranslation('flash_status_connecting');
   if (lblFlashPercent) lblFlashPercent.textContent = "0%";
   if (flashProgressBar) flashProgressBar.style.width = "0%";
   
@@ -742,7 +1011,7 @@ async function flashFirmware() {
   };
 
   try {
-    logToTerminal("Sélection du port série pour le flash (choisissez le port de votre carte)...", "sys-out");
+    logToTerminal(getTranslation('log_flash_port_select'), "sys-out");
     const flashPort = await navigator.serial.requestPort();
     
     transport = new Transport(flashPort, true);
@@ -753,22 +1022,22 @@ async function flashFirmware() {
       baudrate: 115200 // vitesse de synchronisation bootloader
     });
     
-    if (lblFlashStatus) lblFlashStatus.textContent = "Synchronisation de la carte...";
+    if (lblFlashStatus) lblFlashStatus.textContent = getTranslation('flash_status_syncing');
     await esploader.main();
     
-    if (lblFlashStatus) lblFlashStatus.textContent = `Puce détectée : ${esploader.chipName}`;
-    logToTerminal(`Téléchargement du firmware depuis ${binUrl}...`, "sys-out");
+    if (lblFlashStatus) lblFlashStatus.textContent = getTranslation('flash_status_chip', { chip: esploader.chipName });
+    logToTerminal(getTranslation('log_download_bin', { url: binUrl }), "sys-out");
     
     const response = await fetch(binUrl);
     if (!response.ok) {
-      throw new Error(`Impossible de récupérer le binaire (${response.statusText})`);
+      throw new Error(getTranslation('log_download_bin_failed', { status: response.statusText }) || `Impossible de récupérer le binaire (${response.statusText})`);
     }
     
     const arrayBuffer = await response.arrayBuffer();
     const firmwareData = new Uint8Array(arrayBuffer);
     
-    if (lblFlashStatus) lblFlashStatus.textContent = "Écriture en cours (flash)...";
-    logToTerminal("Début de l'écriture de l'application à 0x10000...", "sys-out");
+    if (lblFlashStatus) lblFlashStatus.textContent = getTranslation('flash_status_writing');
+    logToTerminal(getTranslation('log_write_flash_start'), "sys-out");
     
     const fileArray = [
       { data: firmwareData, address: 0x10000 }
@@ -788,8 +1057,8 @@ async function flashFirmware() {
       }
     });
     
-    if (lblFlashStatus) lblFlashStatus.textContent = "Flash Réussi !";
-    logToTerminal("Mise à jour terminée ! Redémarrage de la carte...", "sys-out");
+    if (lblFlashStatus) lblFlashStatus.textContent = getTranslation('flash_status_success');
+    logToTerminal(getTranslation('log_update_complete_reboot'), "sys-out");
     
     // Redémarrer la carte matériellement
     await transport.setDTR(false);
@@ -797,8 +1066,8 @@ async function flashFirmware() {
     await transport.setDTR(true);
     
   } catch (err) {
-    if (lblFlashStatus) lblFlashStatus.textContent = "ÉCHEC !";
-    logToTerminal(`Erreur lors du flash : ${err.message}`, 'sys-out');
+    if (lblFlashStatus) lblFlashStatus.textContent = getTranslation('flash_status_failed');
+    logToTerminal(getTranslation('log_flash_error', { message: err.message }), 'sys-out');
     console.error(err);
   } finally {
     if (transport) {
@@ -864,7 +1133,26 @@ if (btnClearTrackers) {
 // Détecter si le port a été déconnecté matériellement (câble arraché)
 navigator.serial?.addEventListener('disconnect', (event) => {
   if (port && event.target === port) {
-    logToTerminal("Le port série a été déconnecté physiquement.", "sys-out");
+    logToTerminal(getTranslation('log_physical_disconnect'), "sys-out");
     disconnectSerial();
   }
 });
+
+// Événements du sélecteur de langue
+const btnLangFr = document.getElementById('btn-lang-fr');
+const btnLangEn = document.getElementById('btn-lang-en');
+if (btnLangFr) btnLangFr.addEventListener('click', () => setLanguage('fr'));
+if (btnLangEn) btnLangEn.addEventListener('click', () => setLanguage('en'));
+
+// Initialisation de la langue au chargement de la page
+const savedLang = localStorage.getItem('nectar_lang');
+if (savedLang) {
+  setLanguage(savedLang);
+} else {
+  const browserLang = navigator.language || navigator.userLanguage;
+  if (browserLang && browserLang.startsWith('en')) {
+    setLanguage('en');
+  } else {
+    setLanguage('fr');
+  }
+}

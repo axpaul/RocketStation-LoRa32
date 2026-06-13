@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nectar Rx Station - Web Control Panel</title>
-  <link rel="stylesheet" href="style.css?v=1.3.7-payload-rssi-snr">
+  <link rel="stylesheet" href="style.css?v=1.3.8-lang-translation">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -21,20 +21,26 @@
         <div class="antenna-ring ring-3"></div>
       </div>
       <div>
-        <h1>NECTAR RX STATION</h1>
-        <p class="subtitle">Web Control Center v1.3.1</p>
+        <h1 data-i18n="header_title">NECTAR RX STATION</h1>
+        <p class="subtitle" data-i18n="header_subtitle">Web Control Center v1.3.1</p>
       </div>
     </div>
-    <div id="conn-badge" class="badge disconnected">Déconnecté</div>
+    <div class="header-right">
+      <div class="lang-selector">
+        <button id="btn-lang-fr" class="btn-lang active">FR</button>
+        <button id="btn-lang-en" class="btn-lang">EN</button>
+      </div>
+      <div id="conn-badge" class="badge disconnected" data-i18n="badge_disconnected">Déconnecté</div>
+    </div>
   </header>
 
   <main class="dashboard-grid">
     <!-- 1. PANNEAU DE CONNEXION SÉRIE -->
     <section class="card connection-panel">
-      <h2>🔌 Liaison Série USB</h2>
+      <h2 data-i18n="conn_title">🔌 Liaison Série USB</h2>
       <div class="card-content">
         <div class="form-group">
-          <label for="baudrate">Vitesse de transmission (Baud) :</label>
+          <label for="baudrate" data-i18n="conn_baudrate">Vitesse de transmission (Baud) :</label>
           <select id="baudrate">
             <option value="115200" selected>115200</option>
             <option value="9600">9600</option>
@@ -42,16 +48,16 @@
           </select>
         </div>
         <div class="button-group-row">
-          <button id="btn-connect" class="btn btn-primary">Connexion</button>
-          <button id="btn-disconnect" class="btn btn-danger" disabled>Déconnexion</button>
+          <button id="btn-connect" class="btn btn-primary" data-i18n="conn_btn_connect">Connexion</button>
+          <button id="btn-disconnect" class="btn btn-danger" data-i18n="conn_btn_disconnect" disabled>Déconnexion</button>
         </div>
         <div class="port-info text-secondary">
-          Statut : <span id="lbl-port-name">Aucun appareil connecté</span>
+          <span data-i18n="conn_status_label">Statut :</span> <span id="lbl-port-name" data-i18n="conn_no_device">Aucun appareil connecté</span>
         </div>
         <div class="checkbox-group" style="margin-top: 1rem;">
           <label class="checkbox-container">
             <input type="checkbox" id="chk-voice-alerts" checked>
-            🎙️ Synthèse Vocale (Alertes Tracker)
+            <span data-i18n="conn_voice_alerts">🎙️ Synthèse Vocale (Alertes Tracker)</span>
           </label>
         </div>
       </div>
@@ -59,10 +65,10 @@
 
     <!-- 2. CONFIGURATION DE LA RADIO (AT COMMANDS) -->
     <section class="card config-panel">
-      <h2>⚙️ Paramètres Radio</h2>
+      <h2 data-i18n="config_title">⚙️ Paramètres Radio</h2>
       <div class="card-content">
         <div class="form-group">
-          <label for="input-freq">Fréquence (MHz) :</label>
+          <label for="input-freq" data-i18n="config_frequency">Fréquence (MHz) :</label>
           <div class="input-with-unit">
             <input type="number" id="input-freq" min="400" max="900" step="0.001" placeholder="Ex: 869.525" disabled>
             <span class="unit">MHz</span>
@@ -70,7 +76,7 @@
         </div>
         
         <div class="form-group">
-          <label for="select-sf">Spreading Factor (SF) :</label>
+          <label for="select-sf" data-i18n="config_sf">Spreading Factor (SF) :</label>
           <select id="select-sf" disabled>
             <option value="6">SF6</option>
             <option value="7">SF7</option>
@@ -83,7 +89,7 @@
         </div>
 
         <div class="form-group">
-          <label for="select-bw">Bande Passante (BW) :</label>
+          <label for="select-bw" data-i18n="config_bw">Bande Passante (BW) :</label>
           <select id="select-bw" disabled>
             <option value="7.8">7.8 kHz</option>
             <option value="10.4">10.4 kHz</option>
@@ -99,10 +105,10 @@
         </div>
 
         <div class="button-group-grid">
-          <button id="btn-read-cfg" class="btn btn-secondary" disabled>Actualiser</button>
-          <button id="btn-write-cfg" class="btn btn-accent" disabled>Appliquer</button>
-          <button id="btn-save-cfg" class="btn btn-success" disabled>Sauver NVS</button>
-          <button id="btn-reset-cfg" class="btn btn-danger" disabled>Reset Usine</button>
+          <button id="btn-read-cfg" class="btn btn-secondary" data-i18n="config_btn_read" disabled>Actualiser</button>
+          <button id="btn-write-cfg" class="btn btn-accent" data-i18n="config_btn_write" disabled>Appliquer</button>
+          <button id="btn-save-cfg" class="btn btn-success" data-i18n="config_btn_save" disabled>Sauver NVS</button>
+          <button id="btn-reset-cfg" class="btn btn-danger" data-i18n="config_btn_reset" disabled>Reset Usine</button>
         </div>
       </div>
     </section>
@@ -110,22 +116,22 @@
     <!-- 3. STATISTIQUES ET TENDANCE RSSI/SNR -->
     <section class="card stats-panel">
       <div class="card-header">
-        <h2>📊 Qualité de Liaison</h2>
+        <h2 data-i18n="stats_title">📊 Qualité de Liaison</h2>
         <span id="lbl-throughput" class="text-secondary" style="font-size: 0.8rem; font-family: var(--font-mono);">0 B/s</span>
       </div>
       <div class="card-content stats-content">
         <div class="mini-stats">
           <div class="stat-box">
             <span class="stat-val" id="stat-rssi">--</span>
-            <span class="stat-lbl">RSSI (dBm)</span>
+            <span class="stat-lbl" data-i18n="stats_rssi">RSSI (dBm)</span>
           </div>
           <div class="stat-box">
             <span class="stat-val" id="stat-snr">--</span>
-            <span class="stat-lbl">SNR (dB)</span>
+            <span class="stat-lbl" data-i18n="stats_snr">SNR (dB)</span>
           </div>
           <div class="stat-box">
             <span class="stat-val" id="stat-count">0</span>
-            <span class="stat-lbl">Trames Reçues</span>
+            <span class="stat-lbl" data-i18n="stats_count">Trames Reçues</span>
           </div>
         </div>
         
@@ -146,24 +152,24 @@
 
     <!-- 4. FLASHEUR / METTRE À JOUR LE FIRMWARE -->
     <section class="card flasher-panel">
-      <h2>⚡ Mise à Jour Firmware</h2>
+      <h2 data-i18n="flash_title">⚡ Mise à Jour Firmware</h2>
       <div class="card-content">
-        <p class="description">Flashez directement la version <strong>v1.3.1</strong> depuis votre navigateur par port USB.</p>
+        <p class="description" data-i18n="flash_desc">Flashez directement la version <strong>v1.3.1</strong> depuis votre navigateur par port USB.</p>
         <div class="form-group">
-          <label for="select-band">Bande Radio native de la carte :</label>
+          <label for="select-band" data-i18n="flash_band">Bande Radio native de la carte :</label>
           <select id="select-band">
-            <option value="868" selected>868 MHz (Europe)</option>
-            <option value="433">433 MHz</option>
+            <option value="868" selected data-i18n="flash_band_868">868 MHz (Europe)</option>
+            <option value="433" data-i18n="flash_band_433">433 MHz</option>
           </select>
         </div>
-        <button id="btn-flash" class="btn btn-primary">Flasher la carte (v1.3.1)</button>
+        <button id="btn-flash" class="btn btn-primary" data-i18n="flash_btn_flash">Flasher la carte (v1.3.1)</button>
         
         <div id="flash-progress-container" class="progress-container hidden">
           <div class="progress-bar-wrapper">
             <div id="flash-progress-bar" class="progress-bar"></div>
           </div>
           <div class="progress-text">
-            Statut : <span id="lbl-flash-status">Attente...</span> (<span id="lbl-flash-percent">0%</span>)
+            <span data-i18n="flash_status_label">Statut :</span> <span id="lbl-flash-status" data-i18n="flash_status_waiting">Attente...</span> (<span id="lbl-flash-percent">0%</span>)
           </div>
         </div>
       </div>
@@ -172,25 +178,25 @@
     <!-- 4.5 ÉMETTEURS DÉTECTÉS (TRACKERS) -->
     <section class="card trackers-panel full-width">
       <div class="card-header">
-        <h2>🛸 Émetteurs Détectés (Active Trackers)</h2>
-        <button id="btn-clear-trackers" class="btn btn-secondary btn-sm">Réinitialiser</button>
+        <h2 data-i18n="trackers_title">🛸 Émetteurs Détectés (Active Trackers)</h2>
+        <button id="btn-clear-trackers" class="btn btn-secondary btn-sm" data-i18n="btn_reset">Réinitialiser</button>
       </div>
       <div class="card-content table-container">
         <table id="table-trackers">
           <thead>
             <tr>
-              <th>Tracker (SSID)</th>
-              <th>Type de Mission</th>
-              <th>Dernier APID</th>
-              <th>Trames Reçues</th>
-              <th>Dernière Activité</th>
-              <th>Statut</th>
-              <th>Charge Utile (Hex)</th>
+              <th data-i18n="th_tracker">Tracker (SSID)</th>
+              <th data-i18n="th_mission_type">Type de Mission</th>
+              <th data-i18n="th_last_apid">Dernier APID</th>
+              <th data-i18n="th_received_frames">Trames Reçues</th>
+              <th data-i18n="th_last_activity">Dernière Activité</th>
+              <th data-i18n="th_status">Statut</th>
+              <th data-i18n="th_payload">Charge Utile (Hex)</th>
             </tr>
           </thead>
           <tbody>
             <tr id="row-empty-trackers">
-              <td colspan="7" class="text-center text-secondary">Aucun émetteur détecté pour l'instant. Branchez le récepteur LoRa pour intercepter les signaux.</td>
+              <td id="lbl-empty-trackers" colspan="7" class="text-center text-secondary" data-i18n="trackers_empty">Aucun émetteur détecté pour l'instant. Branchez le récepteur LoRa pour intercepter les signaux.</td>
             </tr>
           </tbody>
         </table>
@@ -200,29 +206,29 @@
     <!-- 5. TÉLÉMÉTRIE LIVE (TABLEAU) -->
     <section class="card telemetry-panel full-width">
       <div class="card-header">
-        <h2>📡 Trames reçues en direct (NectarMC)</h2>
+        <h2 data-i18n="telemetry_title">📡 Trames reçues en direct (NectarMC)</h2>
         <div class="header-actions">
-          <button id="btn-export-telemetry" class="btn btn-success btn-sm">Exporter CSV</button>
-          <button id="btn-clear-telemetry" class="btn btn-secondary btn-sm">Effacer</button>
+          <button id="btn-export-telemetry" class="btn btn-success btn-sm" data-i18n="telemetry_btn_export">Exporter CSV</button>
+          <button id="btn-clear-telemetry" class="btn btn-secondary btn-sm" data-i18n="btn_clear">Effacer</button>
         </div>
       </div>
       <div class="card-content table-container">
         <table id="table-telemetry">
           <thead>
             <tr>
-              <th>Index</th>
-              <th>Horodatage</th>
-              <th>Tracker (SSID)</th>
-              <th>APID</th>
-              <th>Taille</th>
-              <th>RSSI</th>
-              <th>SNR</th>
-              <th>Charge Utile (Hex)</th>
+              <th data-i18n="th_index">Index</th>
+              <th data-i18n="th_timestamp">Horodatage</th>
+              <th data-i18n="th_tracker">Tracker (SSID)</th>
+              <th data-i18n="th_apid">APID</th>
+              <th data-i18n="th_size">Taille</th>
+              <th data-i18n="th_rssi">RSSI</th>
+              <th data-i18n="th_snr">SNR</th>
+              <th data-i18n="th_payload">Charge Utile (Hex)</th>
             </tr>
           </thead>
           <tbody>
             <tr id="row-empty">
-              <td colspan="8" class="text-center text-secondary">Aucune trame reçue pour l'instant. Branchez le port série et mettez sous tension vos trackers.</td>
+              <td id="lbl-empty-telemetry" colspan="8" class="text-center text-secondary" data-i18n="telemetry_empty">Aucune trame reçue pour l'instant. Branchez le port série et mettez sous tension vos trackers.</td>
             </tr>
           </tbody>
         </table>
@@ -232,24 +238,24 @@
     <!-- 6. TERMINAL DE COMMANDES SÉRIE -->
     <section class="card terminal-panel full-width">
       <div class="card-header">
-        <h2>📟 Console & Terminal</h2>
-        <button id="btn-clear-terminal" class="btn btn-secondary btn-sm">Effacer</button>
+        <h2 data-i18n="terminal_title">📟 Console & Terminal</h2>
+        <button id="btn-clear-terminal" class="btn btn-secondary btn-sm" data-i18n="btn_clear">Effacer</button>
       </div>
       <div class="card-content terminal-content">
         <div id="terminal-logs" class="terminal-view"></div>
         <form id="terminal-form" class="terminal-input-row">
           <span class="prompt">&gt;</span>
-          <input type="text" id="terminal-input" placeholder="Tapez une commande AT (ex: AT, AT+FREQ?, AT+CFG)..." disabled>
-          <button type="submit" id="btn-send" class="btn btn-secondary" disabled>Envoyer</button>
+          <input type="text" id="terminal-input" data-i18n-placeholder="terminal_placeholder" placeholder="Tapez une commande AT (ex: AT, AT+FREQ?, AT+CFG)..." disabled>
+          <button type="submit" id="btn-send" class="btn btn-secondary" data-i18n="btn_send" disabled>Envoyer</button>
         </form>
       </div>
     </section>
   </main>
 
   <footer>
-    <p>&copy; 2026 Nectar Project - Conçu et développé par <a href="https://github.com/axpaul" target="_blank" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">Paul Miailhe (axpaul)</a></p>
+    <p>&copy; 2026 Nectar Project - <span data-i18n="footer_credit">Conçu et développé par</span> <a href="https://github.com/axpaul" target="_blank" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">Paul Miailhe (axpaul)</a></p>
   </footer>
 
-  <script type="module" src="app.js?v=1.3.7-payload-rssi-snr"></script>
+  <script type="module" src="app.js?v=1.3.8-lang-translation"></script>
 </body>
 </html>
