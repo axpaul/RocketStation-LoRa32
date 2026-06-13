@@ -185,12 +185,6 @@ pio run -t upload
 
 ---
 
-## 🚀 Évolutions Futures (Roadmap)
-
-*   **Compatibilité BLE (Bluetooth Low Energy)** : Remplacement ou double support du Bluetooth Classic par le BLE pour réduire considérablement la consommation d'énergie de la station sol, et assurer une compatibilité native et immédiate avec les appareils iOS (iPhones/iPads).
-
----
-
 ## 🌐 Outils de l'Écosystème NectarMC
 
 Pour exploiter pleinement votre station sol RocketStation-LoRa32, vous pouvez utiliser les deux solutions logicielles officielles :
