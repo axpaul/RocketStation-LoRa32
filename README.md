@@ -208,5 +208,7 @@ pio run -t upload
 
 ## 👥 Auteur
 
-*   **Paul Miailhe** - Juin 2023 (Version MSE originale).
-*   Mis à jour en Mai 2026 pour la compatibilité NectarMC, l'animation d'en-tête OLED, le suivi de tension de batterie et les retours carte SD graphiques.
+*   **Paul Miailhe ([axpaul](https://github.com/axpaul))** :
+    *   **Concepteur principal** du projet matériel et logiciel de la station de réception sol RocketStation-LoRa32.
+    *   **Version originale (MSE)** : Juin 2023.
+    *   **Refonte & Améliorations** : Mai/Juin 2026 (Intégration du protocole binaire NectarMC, animation graphique live de pylône OLED, décodeur et gestionnaire de trackers dynamiques et interface Web de contrôle/flashage en ligne par Web Serial API).
