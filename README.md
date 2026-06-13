@@ -80,7 +80,7 @@ Les trames radio LoRa émises par les trackers/émetteurs vers la station au sol
 | **Octet 0** | `uint8_t` | `SSID_NUM` | ID ou numéro du tracker (de 0 à 255). |
 | **Octet 1** | `uint8_t` | `APID` | Identifiant du processus applicatif ou type de paquet (de 0 à 63). |
 | **Octet 2** | `uint8_t` | `SSID_TYPE` | Type de mission (`0` = FX, `1` = MF, `2` = BALLOON, `3` = OTHER). |
-| **Octets 3 à N+2** | `uint8_t[]` | `Payload` | Charge utile contenant les données brutes des capteurs ($N$ octets). |
+| **Octets 3 à 2+N** | `uint8_t[]` | `Payload` | Charge utile contenant les données brutes des capteurs ($N$ octets). |
 
 > [!NOTE]
 > **Contrôle d'intégrité (CRC) de la liaison radio :**
@@ -111,12 +111,12 @@ Les trames émises par la station sol vers le PC sur le port série USB et la li
 | **Octet 0** | `uint8_t` | `MAGIC` | Marqueur de synchronisation de début de trame. Toujours égal à `0xEB`. |
 | **Octets 1 à 2** | `uint16_t` | `Id_mission` | Identifiant unique de mission codé en Little-Endian. Regroupe sur 16 bits :<br>- Le type de tracker (`SSID_TYPE`, 2 bits de poids fort, bits 15-14)<br>- Le numéro du tracker (`SSID_NUM`, 8 bits, bits 13-6)<br>- L'identifiant de paquet (`APID`, 6 bits de poids faible, bits 5-0) |
 | **Octet 3** | `uint8_t` | `payload_size` | Longueur $N$ de la charge utile LoRa brute en octets. |
-| **Octets 4 à 4 + N - 1** | `uint8_t[]` | `Payload` | Données utiles brutes provenant directement du tracker LoRa ($N$ octets). |
-| **Octet 4 + N** | `int8_t` | `RSSI` | Niveau de puissance du signal reçu en dBm. Entier signé (ex: `-85` dBm). |
-| **Octet 4 + N + 1** | `int8_t` | `SNR` | Rapport signal/bruit. Multiplié par 4 à l'émission pour encoder une précision de 0.25 dB (ex: `38` pour 9.5 dB, plage utile : -32 dB à +31.75 dB). |
-| **Octets 4 + N + 2 à 4 + N + 5** | `uint32_t` | `Timestamp` | Horodatage de réception absolu (Epoch Unix en secondes) codé en Little-Endian. |
-| **Octets 4 + N + 6 à 4 + N + 7** | `uint16_t` | `CRC16` | Somme de contrôle de validation (polynôme CCITT 0x1021, init 0xFFFF, Little-Endian) calculée sur l'ensemble Header, Payload et Métadonnées (de l'octet 0 à $4+N+5$ inclus). |
-| **Octet 4 + N + 8** | `char` | `Newline` | Caractère retour à la ligne `\n` (`0x0A`) facilitant la détection de fin et la journalisation brute. |
+| **Octets 4 à 3+N** | `uint8_t[]` | `Payload` | Données utiles brutes provenant directement du tracker LoRa ($N$ octets). |
+| **Octet 4+N** | `int8_t` | `RSSI` | Niveau de puissance du signal reçu en dBm. Entier signé (ex: `-85` dBm). |
+| **Octet 5+N** | `int8_t` | `SNR` | Rapport signal/bruit. Multiplié par 4 à l'émission pour encoder une précision de 0.25 dB (ex: `38` pour 9.5 dB, plage utile : -32 dB à +31.75 dB). |
+| **Octets 6+N à 9+N** | `uint32_t` | `Timestamp` | Horodatage de réception absolu (Epoch Unix en secondes) codé en Little-Endian. |
+| **Octets 10+N à 11+N** | `uint16_t` | `CRC16` | Somme de contrôle de validation (polynôme CCITT 0x1021, init 0xFFFF, Little-Endian) calculée sur l'ensemble Header, Payload et Métadonnées (de l'octet 0 à $9+N$ inclus). |
+| **Octet 12+N** | `char` | `Newline` | Caractère retour à la ligne `\n` (`0x0A`) facilitant la détection de fin et la journalisation brute. |
 
 > [!TIP]
 > **Gestion intelligente du temps :**
