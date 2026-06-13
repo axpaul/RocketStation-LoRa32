@@ -9,6 +9,7 @@ let inputWriter = null;
 let isConnected = false;
 let rxBuffer = [];
 let packetIndex = 0;
+let readLoopPromise = null; // Promesse pour suivre la fin de la boucle de lecture
 
 // Variables pour le calcul de débit et le graphique
 let bytesCountThisSecond = 0;
@@ -137,7 +138,7 @@ async function connectSerial() {
       logToTerminal('Connexion établie avec succès.', 'sys-out');
 
       // Démarrer la boucle de lecture
-      readSerialLoop();
+      readLoopPromise = readSerialLoop();
 
       // Envoyer une demande de configuration initiale
       setTimeout(() => {
@@ -165,8 +166,13 @@ async function disconnectSerial() {
     } catch (err) {}
   }
   
-  // Attendre un court instant pour libérer le verrou du lecteur
-  await new Promise(resolve => setTimeout(resolve, 100));
+  // Attendre la fin propre de la boucle de lecture pour éviter les verrous
+  if (readLoopPromise) {
+    try {
+      await readLoopPromise;
+    } catch (err) {}
+    readLoopPromise = null;
+  }
   
   if (port) {
     try {
@@ -182,34 +188,39 @@ async function disconnectSerial() {
 }
 
 async function readSerialLoop() {
-  while (port && port.readable && isConnected) {
-    try {
+  try {
+    while (port && port.readable && isConnected) {
       reader = port.readable.getReader();
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) {
-          break;
-        }
-        if (value) {
-          bytesCountThisSecond += value.length;
-          // Ajouter les nouveaux octets au buffer
-          for (let i = 0; i < value.length; i++) {
-            rxBuffer.push(value[i]);
+      try {
+        while (isConnected) {
+          const { value, done } = await reader.read();
+          if (done) {
+            break;
           }
-          parseRxBuffer();
+          if (value) {
+            bytesCountThisSecond += value.length;
+            // Ajouter les nouveaux octets au buffer
+            for (let i = 0; i < value.length; i++) {
+              rxBuffer.push(value[i]);
+            }
+            parseRxBuffer();
+          }
         }
-      }
-    } catch (err) {
-      logToTerminal(`Erreur de lecture : ${err.message}`, 'sys-out');
-      break;
-    } finally {
-      if (reader) {
-        reader.releaseLock();
-        reader = null;
+      } catch (err) {
+        logToTerminal(`Erreur de lecture : ${err.message}`, 'sys-out');
+        break;
+      } finally {
+        if (reader) {
+          reader.releaseLock();
+          reader = null;
+        }
       }
     }
+  } finally {
+    if (isConnected) {
+      setTimeout(() => disconnectSerial(), 0);
+    }
   }
-  disconnectSerial();
 }
 
 // Envoie du texte brut avec retour chariot (\n)
@@ -500,8 +511,8 @@ async function flashFirmware() {
   const binUrl = `binaries/firmware_bluetooth_${band}.bin`;
   
   if (isConnected) {
-    logToTerminal("Déconnexion de la liaison moniteur pour le flash...", "sys-out");
-    await disconnectSerial();
+    alert("La liaison moniteur série est active. Veuillez cliquer sur 'Déconnexion' avant de lancer le flash du firmware.");
+    return;
   }
   
   setElementDisabled(btnFlash, true);
@@ -526,11 +537,10 @@ async function flashFirmware() {
   };
 
   try {
-    let selectedPort = port;
-    if (!selectedPort) {
-      selectedPort = await navigator.serial.requestPort();
-    }
-    transport = new Transport(selectedPort, true);
+    logToTerminal("Sélection du port série pour le flash (choisissez le port de votre carte)...", "sys-out");
+    const flashPort = await navigator.serial.requestPort();
+    
+    transport = new Transport(flashPort, true);
     
     esploader = new ESPLoader({
       transport: transport,
