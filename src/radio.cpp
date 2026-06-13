@@ -292,6 +292,33 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
     int state = radio->readData(byteArr, length);
 
     if (state == RADIOLIB_ERR_NONE) {
+      // Si le CRC matériel est désactivé (Option B), on vérifie le CRC logiciel avant de valider la trame
+      if (!activeConfig.crcEnable) {
+        if (length < 5) {
+          errCount++;
+          snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
+          strcpy(dispSsidApid, "Invalid size (<5B)");
+          updateDisplay(u8g2, radio);
+          RadioStartListen(radio);
+          return 0;
+        }
+
+        uint16_t receivedCrc = byteArr[length - 2] | (byteArr[length - 1] << 8);
+        uint16_t calculatedCrc = calculate_crc16(byteArr, length - 2);
+
+        if (calculatedCrc != receivedCrc) {
+          errCount++;
+          snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
+          strcpy(dispSsidApid, "CRC Error (Soft)");
+          updateDisplay(u8g2, radio);
+          RadioStartListen(radio);
+          return 0;
+        }
+
+        // Retirer les 2 octets de CRC
+        length -= 2;
+      }
+
       rxCount++;
       // Formatage compact sans espace et limitation à 3 chiffres (0-999) pour conserver de l'espace
       uint32_t dispRx = rxCount % 1000;
