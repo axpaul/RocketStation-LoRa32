@@ -1,25 +1,25 @@
-/* Design System & Variables - Military/Stealth Tactical HUD */
+/* Design System & Variables */
 :root {
   --font-sans: 'Outfit', sans-serif;
   --font-mono: 'Roboto Mono', monospace;
 
-  /* Tactical Stealth Palette */
-  --bg-deep: hsl(0, 0%, 4%);             /* Matte Stealth Black */
-  --bg-card: hsla(0, 0%, 7%, 0.9);       /* Tactical Card Background */
-  --bg-card-border: hsl(120, 15%, 15%);  /* Muted Olive/Green Border */
+  /* HSL Color Palette */
+  --bg-deep: hsl(244, 30%, 8%);
+  --bg-card: hsla(244, 30%, 14%, 0.6);
+  --bg-card-border: hsla(244, 30%, 30%, 0.2);
   
-  --color-primary: hsl(120, 100%, 45%);  /* Phosphor Green */
-  --color-primary-glow: hsla(120, 100%, 45%, 0.25);
-  --color-accent: hsl(25, 100%, 50%);    /* Hazard Amber / Orange */
-  --color-accent-glow: hsla(25, 100%, 50%, 0.35);
-  --color-cyan: hsl(120, 100%, 45%);     /* Aliased to Phosphor Green */
+  --color-primary: hsl(220, 95%, 60%);
+  --color-primary-glow: hsla(220, 95%, 60%, 0.4);
+  --color-accent: hsl(270, 95%, 65%);
+  --color-accent-glow: hsla(270, 95%, 65%, 0.4);
+  --color-cyan: hsl(180, 100%, 50%);
   
-  --color-success: hsl(120, 100%, 45%);
-  --color-danger: hsl(0, 100%, 50%);     /* Red Alert */
+  --color-success: hsl(145, 80%, 45%);
+  --color-danger: hsl(355, 85%, 55%);
   
-  --text-main: hsl(0, 0%, 90%);
-  --text-secondary: hsl(120, 10%, 60%);  /* Tactical Olive Grey */
-  --text-dark: hsl(0, 0%, 10%);
+  --text-main: hsl(0, 0%, 95%);
+  --text-secondary: hsl(244, 15%, 70%);
+  --text-dark: hsl(244, 30%, 20%);
 }
 
 /* Global Reset & Base */
@@ -30,7 +30,7 @@
 }
 
 body {
-  font-family: var(--font-mono); /* Monospace globally for HUD feel */
+  font-family: var(--font-sans);
   background-color: var(--bg-deep);
   color: var(--text-main);
   min-height: 100vh;
@@ -40,37 +40,18 @@ body {
   position: relative;
 }
 
-/* Tactical Grid & Scanline HUD Overlay */
+/* Ambient Background Glow */
 .glow-bg {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: 
-    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-    linear-gradient(90deg, rgba(120, 255, 120, 0.03), rgba(0, 255, 0, 0.01), rgba(120, 255, 120, 0.03));
-  background-size: 100% 4px, 6px 100%;
-  opacity: 0.12;
-  z-index: 1000;
+  position: absolute;
+  top: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, hsla(260, 95%, 55%, 0.15) 0%, rgba(0,0,0,0) 70%);
+  z-index: -1;
   pointer-events: none;
-}
-
-/* Subtle background tactical coordinates grid */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: 
-    linear-gradient(var(--bg-card-border) 1px, transparent 1px),
-    linear-gradient(90deg, var(--bg-card-border) 1px, transparent 1px);
-  background-size: 50px 50px;
-  opacity: 0.08;
-  z-index: -2;
-  pointer-events: none;
+  filter: blur(80px);
 }
 
 /* Header Styling */
@@ -78,142 +59,107 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.2rem 2rem;
-  border-bottom: 2px solid var(--color-primary);
-  background: hsl(0, 0%, 5%);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8);
-  position: relative;
-}
-
-header::after {
-  content: 'TACTICAL LINK ACTIVE';
-  position: absolute;
-  bottom: -9px;
-  left: 2rem;
-  background: var(--bg-deep);
-  padding: 0 5px;
-  font-size: 0.6rem;
-  color: var(--color-primary);
-  letter-spacing: 1px;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--bg-card-border);
+  background: hsla(244, 30%, 8%, 0.8);
+  backdrop-filter: blur(10px);
 }
 
 .logo-container {
   display: flex;
   align-items: center;
-  gap: 1.2rem;
+  gap: 1rem;
 }
 
 h1 {
-  font-family: var(--font-mono);
   font-weight: 800;
-  font-size: 1.5rem;
-  letter-spacing: 2px;
-  color: var(--text-main);
-  text-shadow: 0 0 8px var(--color-primary-glow);
+  font-size: 1.8rem;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #fff 30%, var(--color-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .subtitle {
-  font-size: 0.75rem;
-  color: var(--color-accent);
-  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 400;
   letter-spacing: 2px;
   text-transform: uppercase;
 }
 
-/* Tactical Radar Animation */
+/* Antenna Icon Animation */
 .antenna-icon {
   position: relative;
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--color-primary-glow);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 255, 0, 0.02);
-}
-
-/* Sweeping conic gradient */
-.antenna-icon::after {
-  content: '';
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: conic-gradient(from 0deg, var(--color-primary-glow) 0deg, transparent 90deg, transparent 360deg);
-  animation: radar-sweep 3s infinite linear;
+  width: 30px;
+  height: 40px;
 }
 
 .antenna-mast {
   position: absolute;
-  bottom: 12px;
-  left: 21px;
+  bottom: 0;
+  left: 14px;
   width: 2px;
-  height: 18px;
-  background: var(--color-primary);
-  z-index: 2;
+  height: 30px;
+  background: var(--text-main);
 }
 
 .antenna-mast::before {
   content: '';
   position: absolute;
   top: 0;
-  left: -3px;
-  width: 8px;
-  height: 8px;
+  left: -2px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: var(--color-primary);
-  box-shadow: 0 0 10px var(--color-primary);
+  background: var(--color-cyan);
+  box-shadow: 0 0 8px var(--color-cyan);
 }
 
 .antenna-ring {
   position: absolute;
-  border: 1px solid var(--color-primary);
+  top: 0;
+  left: 14px;
+  border: 1.5px solid var(--color-cyan);
+  border-right: none;
   border-radius: 50%;
+  transform: translateY(-50%) rotate(45deg);
   opacity: 0;
-  z-index: 1;
+  transform-origin: left center;
 }
 
-.ring-1 { width: 15px; height: 15px; animation: tactical-wave 4s infinite linear; }
-.ring-2 { width: 28px; height: 28px; animation: tactical-wave 4s infinite linear 1.3s; }
-.ring-3 { width: 40px; height: 40px; animation: tactical-wave 4s infinite linear 2.6s; }
+.ring-1 { width: 10px; height: 10px; animation: wave 2s infinite linear; }
+.ring-2 { width: 20px; height: 20px; animation: wave 2s infinite linear 0.6s; }
+.ring-3 { width: 30px; height: 30px; animation: wave 2s infinite linear 1.2s; }
 
-@keyframes radar-sweep {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes tactical-wave {
-  0% { transform: scale(0.2); opacity: 0; }
-  25% { opacity: 0.6; }
-  75% { opacity: 0.15; }
-  100% { transform: scale(1); opacity: 0; }
+@keyframes wave {
+  0% { transform: translateY(-50%) scale(0.5) rotate(45deg); opacity: 0; }
+  30% { opacity: 0.8; }
+  100% { transform: translateY(-50%) scale(1.5) rotate(45deg); opacity: 0; }
 }
 
 /* Badges */
 .badge {
-  padding: 0.3rem 0.8rem;
-  border-radius: 2px;
-  font-size: 0.7rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 1px;
   text-transform: uppercase;
   transition: all 0.3s ease;
-  font-family: var(--font-mono);
 }
 
 .badge.disconnected {
-  background: hsla(0, 100%, 50%, 0.12);
+  background: hsla(355, 85%, 55%, 0.15);
   color: var(--color-danger);
-  border: 1px solid var(--color-danger);
-  box-shadow: inset 0 0 4px hsla(0, 100%, 50%, 0.2);
+  border: 1px solid hsla(355, 85%, 55%, 0.3);
 }
 
 .badge.connected {
-  background: hsla(120, 100%, 45%, 0.12);
+  background: hsla(145, 80%, 45%, 0.15);
   color: var(--color-success);
-  border: 1px solid var(--color-success);
-  box-shadow: 0 0 10px var(--color-primary-glow), inset 0 0 4px var(--color-primary-glow);
+  border: 1px solid hsla(145, 80%, 45%, 0.3);
+  box-shadow: 0 0 10px hsla(145, 80%, 45%, 0.2);
 }
 
 /* Layout Grid */
@@ -228,54 +174,23 @@ h1 {
   width: 100%;
 }
 
-/* Card Styling (Stealth Industrial HUD style) */
+/* Card Styling (Glassmorphism) */
 .card {
-  position: relative;
   background: var(--bg-card);
   border: 1px solid var(--bg-card-border);
-  border-radius: 4px;
+  border-radius: 16px;
   padding: 1.5rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-/* Tactical Corner Brackets on cards */
-.card::before {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: -1px;
-  width: 16px;
-  height: 16px;
-  border-top: 3px solid var(--color-primary);
-  border-left: 3px solid var(--color-primary);
-  pointer-events: none;
-  transition: border-color 0.3s ease;
-}
-
-.card::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  right: -1px;
-  width: 16px;
-  height: 16px;
-  border-bottom: 3px solid var(--color-primary);
-  border-right: 3px solid var(--color-primary);
-  pointer-events: none;
-  transition: border-color 0.3s ease;
+  transition: transform 0.3s ease, border-color 0.3s ease;
 }
 
 .card:hover {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 15px rgba(0, 255, 0, 0.08);
-}
-
-.card:hover::before, .card:hover::after {
-  border-color: var(--color-accent);
+  border-color: hsla(244, 30%, 45%, 0.3);
 }
 
 .card.full-width {
@@ -283,20 +198,11 @@ h1 {
 }
 
 h2 {
-  font-family: var(--font-mono);
-  font-size: 1.05rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  letter-spacing: 1px;
-  color: var(--color-primary);
-  border-bottom: 1px dashed var(--bg-card-border);
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--bg-card-border);
   padding-bottom: 0.6rem;
-  text-transform: uppercase;
-}
-
-h2::before {
-  content: '■ ';
-  color: var(--color-accent);
-  margin-right: 0.5rem;
 }
 
 .card-content {
@@ -307,9 +213,9 @@ h2::before {
 }
 
 .description {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 /* Form Controls */
@@ -320,34 +226,33 @@ h2::before {
 }
 
 label {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 
 input, select {
-  background: hsl(0, 0%, 5%);
+  background: hsla(244, 30%, 6%, 0.5);
   border: 1px solid var(--bg-card-border);
-  border-radius: 2px;
+  border-radius: 8px;
   color: var(--text-main);
   padding: 0.6rem 0.8rem;
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
+  font-family: inherit;
+  font-size: 0.95rem;
   transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 input:focus, select:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 6px var(--color-primary-glow);
+  box-shadow: 0 0 0 2px var(--color-primary-glow);
 }
 
 input:disabled, select:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
-  background: hsl(0, 0%, 3%);
 }
 
 .input-with-unit {
@@ -366,98 +271,84 @@ input:disabled, select:disabled {
   right: 1rem;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  color: var(--color-primary);
+  color: var(--text-secondary);
 }
 
-/* Tactical Buttons (Outline to Fill Hover effect) */
+/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0.7rem 1.2rem;
-  border-radius: 2px;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  border: none;
+  transition: all 0.2s ease;
 }
 
 .btn:disabled {
-  opacity: 0.25;
+  opacity: 0.4;
   cursor: not-allowed;
-  border-color: var(--bg-card-border) !important;
-  background: transparent !important;
-  color: var(--text-secondary) !important;
-  box-shadow: none !important;
 }
 
 .btn-primary {
-  background: transparent;
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary);
-  box-shadow: 0 0 5px var(--color-primary-glow);
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 4px 12px var(--color-primary-glow);
 }
 
 .btn-primary:not(:disabled):hover {
-  background: var(--color-primary);
-  color: var(--bg-deep);
-  box-shadow: 0 0 15px var(--color-primary);
+  background: hsl(220, 95%, 65%);
+  box-shadow: 0 6px 16px var(--color-primary-glow);
   transform: translateY(-1px);
 }
 
 .btn-accent {
-  background: transparent;
-  color: var(--color-accent);
-  border: 1px solid var(--color-accent);
-  box-shadow: 0 0 5px var(--color-accent-glow);
+  background: var(--color-accent);
+  color: #fff;
+  box-shadow: 0 4px 12px var(--color-accent-glow);
 }
 
 .btn-accent:not(:disabled):hover {
-  background: var(--color-accent);
-  color: var(--bg-deep);
-  box-shadow: 0 0 15px var(--color-accent);
+  background: hsl(270, 95%, 70%);
+  box-shadow: 0 6px 16px var(--color-accent-glow);
   transform: translateY(-1px);
 }
 
 .btn-secondary {
-  background: transparent;
-  color: var(--text-secondary);
+  background: hsla(244, 30%, 30%, 0.3);
+  color: var(--text-main);
   border: 1px solid var(--bg-card-border);
 }
 
 .btn-secondary:not(:disabled):hover {
-  background: var(--bg-card-border);
-  color: var(--text-main);
+  background: hsla(244, 30%, 40%, 0.5);
+  border-color: hsla(244, 30%, 50%, 0.5);
 }
 
 .btn-success {
-  background: transparent;
-  color: var(--color-success);
-  border: 1px solid var(--color-success);
+  background: hsla(145, 80%, 45%, 0.2);
+  color: hsl(145, 80%, 65%);
+  border: 1px solid hsla(145, 80%, 45%, 0.4);
 }
 
 .btn-success:not(:disabled):hover {
-  background: var(--color-success);
-  color: var(--bg-deep);
-  box-shadow: 0 0 10px var(--color-primary-glow);
+  background: hsla(145, 80%, 45%, 0.35);
 }
 
 .btn-danger {
-  background: transparent;
-  color: var(--color-danger);
-  border: 1px solid var(--color-danger);
+  background: hsla(355, 85%, 55%, 0.2);
+  color: hsl(355, 85%, 75%);
+  border: 1px solid hsla(355, 85%, 55%, 0.4);
 }
 
 .btn-danger:not(:disabled):hover {
-  background: var(--color-danger);
-  color: var(--text-main);
-  box-shadow: 0 0 10px hsla(0, 100%, 50%, 0.3);
+  background: hsla(355, 85%, 55%, 0.35);
 }
 
 .button-group-row {
@@ -477,7 +368,7 @@ input:disabled, select:disabled {
 
 /* Port Info & Texts */
 .port-info {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-family: var(--font-mono);
 }
 
@@ -505,35 +396,21 @@ input:disabled, select:disabled {
   flex-direction: column;
   align-items: center;
   gap: 0.2rem;
-  background: hsl(0, 0%, 5%);
+  background: hsla(244, 30%, 6%, 0.4);
   padding: 0.6rem 1rem;
-  border-radius: 2px;
+  border-radius: 10px;
   flex: 1;
-  border: 1px solid var(--bg-card-border);
-  position: relative;
-}
-
-.stat-box::before {
-  content: 'TACTICAL DATA';
-  position: absolute;
-  top: -6px;
-  left: 6px;
-  background: var(--bg-card);
-  padding: 0 4px;
-  font-size: 0.5rem;
-  color: var(--text-secondary);
-  letter-spacing: 0.5px;
+  border: 1px solid hsla(244, 30%, 30%, 0.1);
 }
 
 .stat-val {
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   font-weight: 800;
-  color: var(--color-primary);
-  text-shadow: 0 0 6px var(--color-primary-glow);
+  color: var(--color-cyan);
 }
 
 .stat-lbl {
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
   color: var(--text-secondary);
@@ -541,24 +418,13 @@ input:disabled, select:disabled {
 }
 
 .chart-container {
-  background: hsl(0, 0%, 3%);
+  background: hsla(244, 30%, 5%, 0.6);
   border: 1px solid var(--bg-card-border);
-  border-radius: 2px;
+  border-radius: 10px;
   padding: 0.5rem;
   height: 90px;
   position: relative;
   overflow: hidden;
-}
-
-.chart-container::before {
-  content: 'THROUGHPUT GRAPH';
-  position: absolute;
-  top: 4px;
-  left: 6px;
-  font-size: 0.55rem;
-  color: var(--color-accent);
-  letter-spacing: 1px;
-  z-index: 10;
 }
 
 svg#rssi-chart {
@@ -569,48 +435,46 @@ svg#rssi-chart {
 /* Telemetry Table */
 .table-container {
   overflow-x: auto;
-  border: 1px solid var(--bg-card-border);
-  background: hsl(0, 0%, 3%);
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   text-align: left;
 }
 
 th, td {
-  padding: 0.7rem 0.9rem;
+  padding: 0.8rem 1rem;
   border-bottom: 1px solid var(--bg-card-border);
 }
 
 th {
   font-weight: 600;
-  color: var(--color-primary);
+  color: var(--text-secondary);
   text-transform: uppercase;
-  font-size: 0.7rem;
-  letter-spacing: 1px;
-  background: hsl(0, 0%, 5%);
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
 }
 
 tr:hover {
-  background: rgba(0, 255, 0, 0.04);
+  background: hsla(244, 30%, 20%, 0.15);
 }
 
 td {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
 }
 
 td:nth-child(8) {
-  color: var(--color-accent);
+  font-family: var(--font-mono);
+  color: var(--color-cyan);
 }
 
 /* Terminal & Log Console */
 .terminal-content {
-  background: hsl(0, 0%, 3%);
+  background: hsl(244, 30%, 5%);
   border: 1px solid var(--bg-card-border);
-  border-radius: 2px;
+  border-radius: 12px;
   padding: 1rem;
   display: flex;
   flex-direction: column;
@@ -622,31 +486,12 @@ td:nth-child(8) {
   flex: 1;
   overflow-y: auto;
   font-family: var(--font-mono);
-  font-size: 0.8rem;
-  line-height: 1.4;
-  color: var(--color-primary);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: hsl(120, 80%, 75%);
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-}
-
-/* Customized scrollbar for terminal and table */
-.terminal-view::-webkit-scrollbar,
-.table-container::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.terminal-view::-webkit-scrollbar-track,
-.table-container::-webkit-scrollbar-track {
-  background: hsl(0, 0%, 3%);
-}
-.terminal-view::-webkit-scrollbar-thumb,
-.table-container::-webkit-scrollbar-thumb {
-  background: var(--bg-card-border);
-}
-.terminal-view::-webkit-scrollbar-thumb:hover,
-.table-container::-webkit-scrollbar-thumb:hover {
-  background: var(--color-primary);
+  gap: 0.2rem;
 }
 
 .terminal-view .cmd-out {
@@ -654,27 +499,26 @@ td:nth-child(8) {
 }
 
 .terminal-view .cmd-in {
-  color: var(--color-accent);
+  color: var(--color-primary);
   font-weight: 600;
 }
 
 .terminal-view .sys-out {
   color: var(--text-secondary);
-  font-style: normal;
-  opacity: 0.8;
+  font-style: italic;
 }
 
 .terminal-input-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  border-top: 1px dashed var(--bg-card-border);
+  border-top: 1px solid hsla(244, 30%, 30%, 0.2);
   padding-top: 0.6rem;
 }
 
 .terminal-input-row .prompt {
   font-family: var(--font-mono);
-  color: var(--color-accent);
+  color: var(--color-primary);
   font-weight: 600;
 }
 
@@ -684,8 +528,7 @@ td:nth-child(8) {
   border: none;
   padding: 0.4rem;
   font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: var(--color-primary);
+  font-size: 0.85rem;
 }
 
 .terminal-input-row input:focus {
@@ -703,23 +546,23 @@ td:nth-child(8) {
 }
 
 .progress-bar-wrapper {
-  background: hsl(0, 0%, 5%);
+  background: hsla(244, 30%, 6%, 0.8);
   border: 1px solid var(--bg-card-border);
-  height: 10px;
-  border-radius: 0;
+  height: 12px;
+  border-radius: 6px;
   overflow: hidden;
 }
 
 .progress-bar {
-  background: linear-gradient(90deg, var(--color-accent) 0%, var(--color-primary) 100%);
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-cyan) 100%);
   width: 0%;
   height: 100%;
-  border-radius: 0;
+  border-radius: 6px;
   transition: width 0.1s linear;
 }
 
 .progress-text {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
 }
 
@@ -737,8 +580,8 @@ td:nth-child(8) {
 footer {
   text-align: center;
   padding: 2rem;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
   border-top: 1px solid var(--bg-card-border);
-  background: hsl(0, 0%, 5%);
+  background: hsla(244, 30%, 5%, 0.8);
 }
