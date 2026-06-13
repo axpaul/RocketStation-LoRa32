@@ -43,6 +43,7 @@ const i18n = {
     header_subtitle: "Web Control Center v1.3.1",
     conn_title: "🔌 Liaison Série USB",
     conn_baudrate: "Vitesse de transmission (Baud) :",
+    conn_fw_version: "Version Décodeur / Trame :",
     conn_btn_connect: "Connexion",
     conn_btn_disconnect: "Déconnexion",
     conn_status_label: "Statut :",
@@ -80,6 +81,7 @@ const i18n = {
     th_last_activity: "Dernière Activité",
     th_status: "Statut",
     th_payload: "Charge Utile (Hex)",
+    th_signal_quality: "Qualité Signal (RSSI / SNR)",
     trackers_empty: "Aucun émetteur détecté pour l'instant. Branchez le récepteur LoRa pour intercepter les signaux.",
     telemetry_title: "📡 Trames reçues en direct (NectarMC)",
     telemetry_btn_export: "Exporter CSV",
@@ -142,6 +144,7 @@ const i18n = {
     header_subtitle: "Web Control Center v1.3.1",
     conn_title: "🔌 USB Serial Link",
     conn_baudrate: "Baud Rate:",
+    conn_fw_version: "Decoder / Frame Version:",
     conn_btn_connect: "Connect",
     conn_btn_disconnect: "Disconnect",
     conn_status_label: "Status:",
@@ -179,6 +182,7 @@ const i18n = {
     th_last_activity: "Last Activity",
     th_status: "Status",
     th_payload: "Payload (Hex)",
+    th_signal_quality: "Signal Quality (RSSI / SNR)",
     trackers_empty: "No transmitter detected yet. Connect the LoRa receiver to intercept signals.",
     telemetry_title: "📡 Live received frames (NectarMC)",
     telemetry_btn_export: "Export CSV",
@@ -298,6 +302,7 @@ const btnDisconnect = document.getElementById('btn-disconnect');
 const lblPortName = document.getElementById('lbl-port-name');
 const connBadge = document.getElementById('conn-badge');
 const selectBaudrate = document.getElementById('baudrate');
+const selectFwVersion = document.getElementById('select-fw-version');
 
 // Inputs Configuration (support des anciens ID 'input-*' si index.html est en cache)
 const inputFreq = document.getElementById('input-freq');
@@ -551,7 +556,8 @@ function parseRxBuffer() {
       }
       
       const payloadSize = rxBuffer[3]; // Taille brute des données de la payload LoRa
-      const totalFrameSize = 4 + payloadSize + 2 + 4 + 2 + 1; // Header (4) + Payload (payloadSize) + RSSI (1) + SNR (1) + Timestamp (4) + CRC (2) + \n (1)
+      const fwVersion = selectFwVersion ? selectFwVersion.value : '1.4.0';
+      const totalFrameSize = (fwVersion === '1.3.1') ? (4 + payloadSize + 2 + 2 + 1) : (4 + payloadSize + 2 + 4 + 2 + 1);
       
       if (rxBuffer.length < totalFrameSize) {
         processing = false; // La trame n'est pas encore complète
@@ -666,14 +672,21 @@ function decodeNectarFrame(frame) {
   const signedSnr = rawSnr >= 128 ? rawSnr - 256 : rawSnr;
   const snr = signedSnr / 4.0;
   
-  // Le Timestamp (Unix Epoch) est après le SNR (4 octets, uint32_t Little-Endian)
-  const tsOffset = 4 + payloadSize + 2;
-  const epoch = (frame[tsOffset + 3] << 24 >>> 0) +
-                (frame[tsOffset + 2] << 16) +
-                (frame[tsOffset + 1] << 8) +
-                frame[tsOffset];
-  
-  const crc = (frame[4 + payloadSize + 7] << 8) | frame[4 + payloadSize + 6];
+  const fwVersion = selectFwVersion ? selectFwVersion.value : '1.4.0';
+  let epoch = 0;
+  let crc = 0;
+
+  if (fwVersion === '1.3.1') {
+    crc = (frame[4 + payloadSize + 3] << 8) | frame[4 + payloadSize + 2];
+  } else {
+    // Le Timestamp (Unix Epoch) est après le SNR (4 octets, uint32_t Little-Endian)
+    const tsOffset = 4 + payloadSize + 2;
+    epoch = (frame[tsOffset + 3] << 24 >>> 0) +
+            (frame[tsOffset + 2] << 16) +
+            (frame[tsOffset + 1] << 8) +
+            frame[tsOffset];
+    crc = (frame[4 + payloadSize + 7] << 8) | frame[4 + payloadSize + 6];
+  }
   
   let ssidPrefix = 'OTHER';
   let missionTypeLabelKey = 'mission_other';
@@ -735,6 +748,8 @@ function decodeNectarFrame(frame) {
       packetCount: 0,
       lastSeen: Date.now(),
       lastPayloadHex: bytesToHex(payload),
+      lastRssi: rssi,
+      lastSnr: snr,
       isLost: false
     };
     speak(getTranslation('voice_new_tracker', { name: trackerName.split('').join(' ') }));
@@ -749,6 +764,8 @@ function decodeNectarFrame(frame) {
   activeTrackers[trackerName].packetCount++;
   activeTrackers[trackerName].lastSeen = Date.now();
   activeTrackers[trackerName].lastPayloadHex = bytesToHex(payload);
+  activeTrackers[trackerName].lastRssi = rssi;
+  activeTrackers[trackerName].lastSnr = snr;
   
   updateTrackersTable();
 
@@ -808,7 +825,7 @@ function updateTrackersTable() {
       <td>${tracker.packetCount}</td>
       <td>${timeString}</td>
       <td><span class="${statusClass}">${statusText}</span></td>
-      <td style="font-family: var(--font-mono); color: var(--color-cyan); word-break: break-all;">${tracker.lastPayloadHex}</td>
+      <td style="font-family: var(--font-mono); font-weight: bold; color: var(--color-cyan);">${tracker.lastRssi} dBm / ${tracker.lastSnr} dB</td>
     `;
   });
 }
