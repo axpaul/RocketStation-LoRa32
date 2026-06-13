@@ -283,7 +283,7 @@ function parseRxBuffer() {
       }
       
       const payloadSize = rxBuffer[3];
-      const totalFrameSize = 4 + payloadSize + 2 + 2 + 1; // Header (4) + Payload + CRC (2) + RSSI (1) + SNR (1) + \n (1)
+      const totalFrameSize = 4 + payloadSize + 2 + 1; // Header (4) + Payload (données + RSSI + SNR) + CRC (2) + \n (1)
       
       if (rxBuffer.length < totalFrameSize) {
         processing = false; // La trame n'est pas encore complète
@@ -349,13 +349,13 @@ function decodeNectarFrame(frame) {
   const ssidType = (ssid >> 8) & 0x03;
   const ssidNum = ssid & 0xFF;
   
-  const payloadSize = frame[3];
-  const payload = frame.slice(4, 4 + payloadSize);
+  const payloadSize = frame[3]; // Taille totale de la payload (données LoRa + RSSI + SNR)
+  const payload = frame.slice(4, 4 + payloadSize - 2); // Les données utiles LoRa réelles
   const crc = (frame[4 + payloadSize + 1] << 8) | frame[4 + payloadSize];
   
-  // Lecture de RSSI et SNR (octets signés après le CRC16)
-  const rawRssi = frame[4 + payloadSize + 2];
-  const rawSnr = frame[4 + payloadSize + 3];
+  // RSSI et SNR sont à la fin de la payload
+  const rawRssi = frame[4 + payloadSize - 2];
+  const rawSnr = frame[4 + payloadSize - 1];
   const rssi = rawRssi >= 128 ? rawRssi - 256 : rawRssi;
   const snr = rawSnr >= 128 ? rawSnr - 256 : rawSnr;
   
@@ -375,13 +375,13 @@ function decodeNectarFrame(frame) {
   const trackerName = `${ssidPrefix}${ssidNum}`;
   const timestamp = new Date().toLocaleTimeString();
   
-  // Ajouter à l'historique complet (capé à 5000 trames)
+  // Ajouter à l'historique complet (capé à 5000 trames) avec la taille brute LoRa
   allReceivedFrames.push({
     index: packetIndex,
     timestamp: timestamp,
     tracker: trackerName,
     apid: apid,
-    size: payloadSize,
+    size: payloadSize - 2, // Taille réelle des données utiles LoRa
     payload: bytesToHex(payload),
     rssi: rssi,
     snr: snr
@@ -402,7 +402,7 @@ function decodeNectarFrame(frame) {
       <td>${timestamp}</td>
       <td><span class="badge connected">${trackerName}</span></td>
       <td>${apid}</td>
-      <td>${payloadSize} octets</td>
+      <td>${payloadSize - 2} octets</td>
       <td>${rssi} dBm</td>
       <td>${snr} dB</td>
       <td style="font-family: var(--font-mono); color: var(--color-cyan); word-break: break-all;">${bytesToHex(payload)}</td>
