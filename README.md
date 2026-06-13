@@ -59,9 +59,9 @@ Les informations détaillées s'affichent sous forme de deux écrans alternant a
 
 ---
 
-## Structure des trames LoRa (Émetteurs)
+## Structure de la trame radio LoRa (Émetteurs)
 
-Pour que la station puisse router dynamiquement les trames vers le logiciel [NectarMC](https://github.com/mlavardin/NectarMC), les émetteurs/trackers doivent envoyer un paquet radio LoRa structuré de la manière suivante (taille totale : $3 + N$ octets) :
+Les trames radio LoRa émises par les trackers/émetteurs vers la station au sol doivent respecter la structure binaire suivante (taille totale : $3 + N$ octets) :
 
 ```
 ┌───────────────────────────────────────────────────────────┬───────────────────┐
@@ -75,7 +75,7 @@ Pour que la station puisse router dynamiquement les trames vers le logiciel [Nec
 
 ### Description des octets de la trame radio
 
-| Position | Type | Rôle | Description |
+| Position | Type | Nom du Champ | Description |
 | :--- | :--- | :--- | :--- |
 | **Octet 0** | `uint8_t` | `SSID_NUM` | ID ou numéro du tracker (de 0 à 255). |
 | **Octet 1** | `uint8_t` | `APID` | Identifiant du processus applicatif ou type de paquet (de 0 à 63). |
@@ -90,7 +90,7 @@ Pour que la station puisse router dynamiquement les trames vers le logiciel [Nec
 
 ---
 
-## Format de trame série NectarMC (Sortie USB / Bluetooth)
+## Structure de la trame série NectarMC (Sortie USB / Bluetooth)
 
 Les trames émises par la station sol vers le PC sur le port série USB et la liaison Bluetooth sont lues par le logiciel pour affichage et traitement. Elles ont la structure binaire suivante (taille totale : $13 + N$ octets) :
 
@@ -104,7 +104,7 @@ Les trames émises par la station sol vers le PC sur le port série USB et la li
 └─────────────┴──────────────┴──────────────┴───────────────────┴─────────┴─────────┴───────────────────┴───────────────┘
 ```
 
-### 📊 Description détaillée des octets de la trame série
+### Description des octets de la trame série
 
 | Position | Type | Nom du Champ | Description |
 | :--- | :--- | :--- | :--- |
