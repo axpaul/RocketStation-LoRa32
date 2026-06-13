@@ -140,11 +140,11 @@ async function connectSerial() {
       // Démarrer la boucle de lecture
       readLoopPromise = readSerialLoop();
 
-      // Envoyer une demande de configuration initiale après le boot de la carte (6s)
-      setTimeout(() => {
-        sendSerialText('AT+FREQ?');
-        setTimeout(() => sendSerialText('AT+SF?'), 200);
-        setTimeout(() => sendSerialText('AT+BW?'), 400);
+      // Envoyer une demande de configuration initiale après le boot de la carte (6s) de manière séquentielle (évite les verrous)
+      setTimeout(async () => {
+        await sendSerialText('AT+FREQ?');
+        await sendSerialText('AT+SF?');
+        await sendSerialText('AT+BW?');
       }, 6000);
 
     } catch (err) {
@@ -223,18 +223,23 @@ async function readSerialLoop() {
   }
 }
 
-// Envoie du texte brut avec retour chariot (\n)
+// Envoie du texte brut avec retour chariot (\n) de manière séquentielle sécurisée
 async function sendSerialText(text) {
   if (!port || !port.writable) return;
   
-  const encoder = new TextEncoder();
-  const data = encoder.encode(text + '\n');
-  
-  const writer = port.writable.getWriter();
-  await writer.write(data);
-  writer.releaseLock();
-  
-  logToTerminal(text, 'cmd-in');
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text + '\n');
+    
+    const writer = port.writable.getWriter();
+    await writer.write(data);
+    writer.releaseLock();
+    
+    logToTerminal(text, 'cmd-in');
+  } catch (err) {
+    logToTerminal(`Erreur d'envoi : ${err.message}`, 'sys-out');
+    console.error("Erreur sendSerialText:", err);
+  }
 }
 
 // ============================================================================
@@ -486,22 +491,22 @@ setInterval(updateThroughputChart, 1000);
 // Événements des boutons de Configuration
 // ============================================================================
 if (btnReadCfg) {
-  btnReadCfg.addEventListener('click', () => {
-    sendSerialText('AT+FREQ?');
-    sendSerialText('AT+SF?');
-    sendSerialText('AT+BW?');
+  btnReadCfg.addEventListener('click', async () => {
+    await sendSerialText('AT+FREQ?');
+    await sendSerialText('AT+SF?');
+    await sendSerialText('AT+BW?');
   });
 }
 
 if (btnWriteCfg) {
-  btnWriteCfg.addEventListener('click', () => {
+  btnWriteCfg.addEventListener('click', async () => {
     const freq = inputFreq ? parseFloat(inputFreq.value) : NaN;
     const sf = selectSf ? parseInt(selectSf.value, 10) : NaN;
     const bw = selectBw ? parseFloat(selectBw.value) : NaN;
     
-    if (!isNaN(freq)) sendSerialText(`AT+FREQ=${freq.toFixed(3)}`);
-    if (!isNaN(sf)) sendSerialText(`AT+SF=${sf}`);
-    if (!isNaN(bw)) sendSerialText(`AT+BW=${bw.toFixed(1)}`);
+    if (!isNaN(freq)) await sendSerialText(`AT+FREQ=${freq.toFixed(3)}`);
+    if (!isNaN(sf)) await sendSerialText(`AT+SF=${sf}`);
+    if (!isNaN(bw)) await sendSerialText(`AT+BW=${bw.toFixed(1)}`);
   });
 }
 
