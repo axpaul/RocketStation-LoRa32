@@ -49,7 +49,7 @@ uint16_t calculate_crc16(const uint8_t *data, size_t len) {
  * La trame finale est émise sur USB (Serial) et Bluetooth (SerialBT) si un appareil est appairé.
  * Un caractère '\n' est ajouté en fin de trame pour en faciliter l'enregistrement.
  */
-void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const uint8_t *payload, size_t len) {
+void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr) {
     // 1. Limiter la longueur pour éviter tout débordement de buffer
     if (len > 255) {
         len = 255;
@@ -82,6 +82,8 @@ void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const ui
     Serial.write(frame, 4 + len);
     Serial.write(crc & 0xFF);         // CRC16 Little-Endian (partie basse)
     Serial.write((crc >> 8) & 0xFF);  // CRC16 Little-Endian (partie haute)
+    Serial.write((uint8_t)rssi);      // Valeur du RSSI signée sur 1 octet
+    Serial.write((uint8_t)snr);       // Valeur du SNR signée sur 1 octet
     Serial.write('\n');               // Retour chariot pour le debug dans les terminaux série
 
 #if ENABLE_BLUETOOTH
@@ -90,6 +92,8 @@ void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const ui
         SerialBT.write(frame, 4 + len);
         SerialBT.write(crc & 0xFF);
         SerialBT.write((crc >> 8) & 0xFF);
+        SerialBT.write((uint8_t)rssi);
+        SerialBT.write((uint8_t)snr);
         SerialBT.write('\n');         // Retour chariot pour la liaison Bluetooth
     }
 #endif

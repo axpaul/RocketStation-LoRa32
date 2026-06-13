@@ -133,7 +133,7 @@ void IRAM_ATTR setFlag(void);
 
 // Protocoles et communication NectarMC
 uint16_t calculate_crc16(const uint8_t *data, size_t len);
-void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const uint8_t *payload, size_t len);
+void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr);
 
 // Commandes de configuration AT (Série / Bluetooth)
 void checkSerialCommands(SX1276 *radio);

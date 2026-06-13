@@ -49,6 +49,7 @@ const btnResetCfg = document.getElementById('btn-reset-cfg');
 const statRssi = document.getElementById('stat-rssi');
 const statSnr = document.getElementById('stat-snr');
 const statCount = document.getElementById('stat-count');
+const lblThroughput = document.getElementById('lbl-throughput');
 
 // Terminal & Log
 const terminalLogs = document.getElementById('terminal-logs');
@@ -282,7 +283,7 @@ function parseRxBuffer() {
       }
       
       const payloadSize = rxBuffer[3];
-      const totalFrameSize = 4 + payloadSize + 2 + 1; // Header (4) + Payload + CRC (2) + \n (1)
+      const totalFrameSize = 4 + payloadSize + 2 + 2 + 1; // Header (4) + Payload + CRC (2) + RSSI (1) + SNR (1) + \n (1)
       
       if (rxBuffer.length < totalFrameSize) {
         processing = false; // La trame n'est pas encore complète
@@ -352,6 +353,12 @@ function decodeNectarFrame(frame) {
   const payload = frame.slice(4, 4 + payloadSize);
   const crc = (frame[4 + payloadSize + 1] << 8) | frame[4 + payloadSize];
   
+  // Lecture de RSSI et SNR (octets signés après le CRC16)
+  const rawRssi = frame[4 + payloadSize + 2];
+  const rawSnr = frame[4 + payloadSize + 3];
+  const rssi = rawRssi >= 128 ? rawRssi - 256 : rawRssi;
+  const snr = rawSnr >= 128 ? rawSnr - 256 : rawSnr;
+  
   let ssidPrefix = 'OTHER';
   let missionTypeLabel = 'Autre (OTHER)';
   if (ssidType === 0) {
@@ -375,7 +382,9 @@ function decodeNectarFrame(frame) {
     tracker: trackerName,
     apid: apid,
     size: payloadSize,
-    payload: bytesToHex(payload)
+    payload: bytesToHex(payload),
+    rssi: rssi,
+    snr: snr
   });
   if (allReceivedFrames.length > 5000) {
     allReceivedFrames.shift();
@@ -394,9 +403,9 @@ function decodeNectarFrame(frame) {
       <td><span class="badge connected">${trackerName}</span></td>
       <td>${apid}</td>
       <td>${payloadSize} octets</td>
-      <td>-- <span class="text-secondary">(OLED)</span></td>
-      <td>-- <span class="text-secondary">(OLED)</span></td>
-      <td>${bytesToHex(payload)}</td>
+      <td>${rssi} dBm</td>
+      <td>${snr} dB</td>
+      <td style="font-family: var(--font-mono); color: var(--color-cyan); word-break: break-all;">${bytesToHex(payload)}</td>
     `;
     
     // Insérer en haut de la table (trames les plus récentes en premier)
@@ -438,6 +447,12 @@ function decodeNectarFrame(frame) {
   // Mettre à jour les indicateurs
   if (statCount) {
     statCount.textContent = packetIndex;
+  }
+  if (statRssi) {
+    statRssi.textContent = `${rssi}`;
+  }
+  if (statSnr) {
+    statSnr.textContent = `${snr}`;
   }
 }
 
@@ -569,13 +584,9 @@ function updateThroughputChart() {
     throughputHistory.shift();
     throughputHistory.push(dataRate);
     
-    // Mettre à jour l'indicateur de débit s'il y a des paquets
-    if (dataRate > 0) {
-      if (statRssi) statRssi.textContent = "ACTIF";
-      if (statSnr) statSnr.textContent = `${dataRate} B/s`;
-    } else {
-      if (statRssi) statRssi.textContent = "--";
-      if (statSnr) statSnr.textContent = "--";
+    // Mettre à jour l'indicateur de débit
+    if (lblThroughput) {
+      lblThroughput.textContent = `${dataRate} B/s`;
     }
     
     // Redessiner le graphique SVG
@@ -675,9 +686,9 @@ function exportTelemetryToCSV() {
     return;
   }
   
-  let csvRows = ["Index,Horodatage,Tracker,APID,Taille(octets),ChargeUtileHex"];
+  let csvRows = ["Index,Horodatage,Tracker,APID,Taille(octets),RSSI(dBm),SNR(dB),ChargeUtileHex"];
   allReceivedFrames.forEach(f => {
-    csvRows.push(`${f.index},${f.timestamp},${f.tracker},${f.apid},${f.size},${f.payload}`);
+    csvRows.push(`${f.index},${f.timestamp},${f.tracker},${f.apid},${f.size},${f.rssi},${f.snr},${f.payload}`);
   });
   
   const csvString = csvRows.join("\n");

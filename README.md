@@ -72,24 +72,30 @@ Pour que la station puisse router dynamiquement les trames vers le logiciel [Nec
 
 ---
 
-## 💻 Format de trame série NectarMC (Sortie USB)
+## 💻 Format de trame série NectarMC (Sortie USB / Bluetooth)
 
-Les trames émises par la station sol vers le PC sur le port série USB sont lues par le logiciel [NectarMC](https://github.com/mlavardin/NectarMC) pour affichage et traitement. Elles ont la structure binaire suivante (taille totale : $6 + N$ octets) :
+Les trames émises par la station sol vers le PC sur le port série USB et la liaison Bluetooth sont lues par le logiciel [NectarMC](https://github.com/mlavardin/NectarMC) pour affichage et traitement. Elles ont la structure binaire suivante (taille totale : $8 + N$ octets) :
 
 ```
-┌───────────────────────────────────────────┬──────────────┬─────────────────┐
-│                 HEADER                    │   PAYLOAD    │ PACKET CONTROL  │
-├───────────────────────────────────────────┼──────────────┼─────────────────┤
-│   MAGIC     │  Id_mission  │ payload_size │   N bytes    │     CRC16       │
-│   1 Byte    │   2 Bytes    │   1 Byte     │              │    2 Bytes      │
-│    0xEB     │ (Little-End) │              │              │  (Little-End)   │
-└─────────────┴──────────────┴──────────────┴──────────────┴─────────────────┘
+┌───────────────────────────────────────────┬──────────────┬─────────────────────────────────────────────────┐
+│                 HEADER                    │   PAYLOAD    │                 PACKET CONTROL                  │
+├───────────────────────────────────────────┼──────────────┼─────────────────────────────────────────────────┤
+│   MAGIC     │  Id_mission  │ payload_size │   N bytes    │     CRC16       │    RSSI       │     SNR         │
+│   1 Byte    │   2 Bytes    │   1 Byte     │              │    2 Bytes      │   1 Byte      │    1 Byte       │
+│    0xEB     │ (Little-End) │              │              │  (Little-End)   │  (int8_t)     │   (int8_t)      │
+└─────────────┴──────────────┴──────────────┴──────────────┴─────────────────┴───────────────┴─────────────────┘
 ```
 
 *   **MAGIC** : `0xEB` (Marqueur de synchronisation).
 *   **Id_mission** : Fusion du SSID (TYPE sur bits 15-14, NUM sur bits 13-6) et de l'APID (bits 5-0) sur 16 bits.
 *   **payload_size** : Nombre d'octets $N$ de données utiles (sans l'en-tête LoRa).
 *   **CRC16** : Calculé sur le Header + Payload (polynôme CCITT 0x1021, init 0xFFFF).
+*   **RSSI** : Force du signal reçu en dBm (entier signé `int8_t` sur 1 octet).
+*   **SNR** : Rapport signal/bruit en dB (entier signé `int8_t` sur 1 octet).
+
+> [!TIP]
+> **Compatibilité NectarMC préservée :**
+> L'ajout du **RSSI** et du **SNR** se fait directement après la somme de contrôle CRC16. Ainsi, le logiciel officiel **NectarMC** (qui valide et décode la trame jusqu'au CRC16 puis ignore les octets restants jusqu'au prochain magic byte) reste **100% compatible**, tout en permettant à la console web d'extraire ces valeurs physiques en temps réel.
 
 ---
 

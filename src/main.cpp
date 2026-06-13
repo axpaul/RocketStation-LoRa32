@@ -115,8 +115,12 @@ void loop() {
       const uint8_t* payload = &byteArr[3];
       size_t payload_len     = receivedLen - 3;
       
+      // Extraction des métriques de la liaison radio
+      int8_t rssi_val = (int8_t)radio.getRSSI();
+      int8_t snr_val  = (int8_t)radio.getSNR();
+      
       // Transmission de la trame binaire NectarMC (USB et Bluetooth)
-      sendNectarFrame(ssid_type, ssid_num, apid, payload, payload_len);
+      sendNectarFrame(ssid_type, ssid_num, apid, payload, payload_len, rssi_val, snr_val);
       
       // Enregistrement de la trame sur carte SD si elle est disponible
       if (*SDCard) {
