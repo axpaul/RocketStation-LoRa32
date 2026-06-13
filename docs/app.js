@@ -11,6 +11,7 @@ let rxBuffer = [];
 let packetIndex = 0;
 let readLoopPromise = null; // Promesse pour suivre la fin de la boucle de lecture
 let activeTrackers = {};    // Dictionnaire des émetteurs détectés : { name: { typeLabel, lastApid, packetCount, lastSeen, lastPayloadHex } }
+let allReceivedFrames = []; // Historique complet pour export CSV (capé à 5000 trames)
 
 // Variables pour le calcul de débit et le graphique
 let bytesCountThisSecond = 0;
@@ -67,6 +68,12 @@ const lblFlashPercent = document.getElementById('lbl-flash-percent');
 const tableTelemetryBody = document.querySelector('#table-telemetry tbody');
 const rowEmpty = document.getElementById('row-empty');
 
+// Nouveaux boutons de nettoyage, export et option vocale
+const btnClearTerminal = document.getElementById('btn-clear-terminal');
+const btnClearTelemetry = document.getElementById('btn-clear-telemetry');
+const btnExportTelemetry = document.getElementById('btn-export-telemetry');
+const btnClearTrackers = document.getElementById('btn-clear-trackers');
+
 // Helper sécurisé pour activer/désactiver un élément s'il existe
 function setElementDisabled(el, disabled) {
   if (el) {
@@ -77,12 +84,29 @@ function setElementDisabled(el, disabled) {
 // ============================================================================
 // Fonctions d'Affichage & Utilitaires
 // ============================================================================
+function speak(text) {
+  const chkVoiceAlerts = document.getElementById('chk-voice-alerts');
+  if (!chkVoiceAlerts || !chkVoiceAlerts.checked) return;
+  
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'fr-FR';
+    window.speechSynthesis.speak(utterance);
+  }
+}
+
 function logToTerminal(message, type = 'cmd-out') {
   if (!terminalLogs) return;
   const div = document.createElement('div');
   div.className = type;
   div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
   terminalLogs.appendChild(div);
+  
+  // Limiter le nombre de lignes à 500 pour éviter de surcharger le DOM
+  while (terminalLogs.children.length > 500) {
+    terminalLogs.removeChild(terminalLogs.firstChild);
+  }
+  
   terminalLogs.scrollTop = terminalLogs.scrollHeight;
 }
 
@@ -344,6 +368,19 @@ function decodeNectarFrame(frame) {
   const trackerName = `${ssidPrefix}${ssidNum}`;
   const timestamp = new Date().toLocaleTimeString();
   
+  // Ajouter à l'historique complet (capé à 5000 trames)
+  allReceivedFrames.push({
+    index: packetIndex,
+    timestamp: timestamp,
+    tracker: trackerName,
+    apid: apid,
+    size: payloadSize,
+    payload: bytesToHex(payload)
+  });
+  if (allReceivedFrames.length > 5000) {
+    allReceivedFrames.shift();
+  }
+  
   // Ajouter au tableau de télémétrie
   if (rowEmpty) {
     rowEmpty.style.display = 'none';
@@ -365,22 +402,30 @@ function decodeNectarFrame(frame) {
     // Insérer en haut de la table (trames les plus récentes en premier)
     tableTelemetryBody.insertBefore(tr, tableTelemetryBody.firstChild);
     
-    // Limiter le nombre de lignes à 50
+    // Limiter le nombre de lignes à 50 pour la performance DOM
     if (tableTelemetryBody.children.length > 50) {
       tableTelemetryBody.removeChild(tableTelemetryBody.lastChild);
     }
   }
 
   // Mettre à jour la classification des trackers
-  if (!activeTrackers[trackerName]) {
+  const isNew = !activeTrackers[trackerName];
+  if (isNew) {
     activeTrackers[trackerName] = {
       name: trackerName,
       typeLabel: missionTypeLabel,
       lastApid: apid,
       packetCount: 0,
       lastSeen: Date.now(),
-      lastPayloadHex: bytesToHex(payload)
+      lastPayloadHex: bytesToHex(payload),
+      isLost: false
     };
+    speak(`Nouveau tracker détecté, ${trackerName.split('').join(' ')}`);
+  } else {
+    if (activeTrackers[trackerName].isLost) {
+      activeTrackers[trackerName].isLost = false;
+      speak(`Tracker ${trackerName.split('').join(' ')} de retour en ligne`);
+    }
   }
   
   activeTrackers[trackerName].lastApid = apid;
@@ -416,6 +461,12 @@ function updateTrackersTable() {
     
     // Si pas de signal depuis 15 secondes, le tracker est marqué PERDU
     const isLost = (now - tracker.lastSeen) > 15000;
+    
+    if (isLost && !tracker.isLost) {
+      tracker.isLost = true;
+      speak(`Alerte, tracker ${name.split('').join(' ')} perdu`);
+    }
+    
     const statusText = isLost ? 'PERDU' : 'ACTIF';
     const statusClass = isLost ? 'badge disconnected' : 'badge connected';
     
@@ -617,6 +668,35 @@ if (terminalForm) {
   });
 }
 
+// Exporte les trames enregistrées en CSV
+function exportTelemetryToCSV() {
+  if (allReceivedFrames.length === 0) {
+    alert("Aucune trame en mémoire à exporter.");
+    return;
+  }
+  
+  let csvRows = ["Index,Horodatage,Tracker,APID,Taille(octets),ChargeUtileHex"];
+  allReceivedFrames.forEach(f => {
+    csvRows.push(`${f.index},${f.timestamp},${f.tracker},${f.apid},${f.size},${f.payload}`);
+  });
+  
+  const csvString = csvRows.join("\n");
+  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '-');
+  link.setAttribute("download", `nectar_telemetry_${dateStr}_${timeStr}.csv`);
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 // ============================================================================
 // Flasheur de Firmware Web (ESPTool)
 // ============================================================================
@@ -725,6 +805,50 @@ async function flashFirmware() {
 if (btnConnect) btnConnect.addEventListener('click', connectSerial);
 if (btnDisconnect) btnDisconnect.addEventListener('click', disconnectSerial);
 if (btnFlash) btnFlash.addEventListener('click', flashFirmware);
+
+// Nettoyage console
+if (btnClearTerminal) {
+  btnClearTerminal.addEventListener('click', () => {
+    if (terminalLogs) terminalLogs.innerHTML = '';
+  });
+}
+
+// Nettoyage télémétrie
+if (btnClearTelemetry) {
+  btnClearTelemetry.addEventListener('click', () => {
+    packetIndex = 0;
+    allReceivedFrames = [];
+    if (statCount) statCount.textContent = '0';
+    if (tableTelemetryBody) {
+      tableTelemetryBody.innerHTML = '';
+      if (rowEmpty) {
+        rowEmpty.style.display = 'table-row';
+        tableTelemetryBody.appendChild(rowEmpty);
+      }
+    }
+  });
+}
+
+// Export télémétrie CSV
+if (btnExportTelemetry) {
+  btnExportTelemetry.addEventListener('click', exportTelemetryToCSV);
+}
+
+// Réinitialisation des trackers
+if (btnClearTrackers) {
+  btnClearTrackers.addEventListener('click', () => {
+    activeTrackers = {};
+    const tableBody = document.querySelector('#table-trackers tbody');
+    const rowEmptyTrackers = document.getElementById('row-empty-trackers');
+    if (tableBody) {
+      tableBody.innerHTML = '';
+      if (rowEmptyTrackers) {
+        rowEmptyTrackers.style.display = 'table-row';
+        tableBody.appendChild(rowEmptyTrackers);
+      }
+    }
+  });
+}
 
 // Détecter si le port a été déconnecté matériellement (câble arraché)
 navigator.serial?.addEventListener('disconnect', (event) => {

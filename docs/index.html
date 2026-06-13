@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nectar Rx Station - Web Control Panel</title>
-  <link rel="stylesheet" href="style.css?v=1.3.5-trackers-table">
+  <link rel="stylesheet" href="style.css?v=1.3.6-clear-and-features">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -47,6 +47,12 @@
         </div>
         <div class="port-info text-secondary">
           Statut : <span id="lbl-port-name">Aucun appareil connecté</span>
+        </div>
+        <div class="checkbox-group" style="margin-top: 1rem;">
+          <label class="checkbox-container">
+            <input type="checkbox" id="chk-voice-alerts" checked>
+            🎙️ Synthèse Vocale (Alertes Tracker)
+          </label>
         </div>
       </div>
     </section>
@@ -162,7 +168,10 @@
 
     <!-- 4.5 ÉMETTEURS DÉTECTÉS (TRACKERS) -->
     <section class="card trackers-panel full-width">
-      <h2>🛸 Émetteurs Détectés (Active Trackers)</h2>
+      <div class="card-header">
+        <h2>🛸 Émetteurs Détectés (Active Trackers)</h2>
+        <button id="btn-clear-trackers" class="btn btn-secondary btn-sm">Réinitialiser</button>
+      </div>
       <div class="card-content table-container">
         <table id="table-trackers">
           <thead>
@@ -187,7 +196,13 @@
 
     <!-- 5. TÉLÉMÉTRIE LIVE (TABLEAU) -->
     <section class="card telemetry-panel full-width">
-      <h2>📡 Trames reçues en direct (NectarMC)</h2>
+      <div class="card-header">
+        <h2>📡 Trames reçues en direct (NectarMC)</h2>
+        <div class="header-actions">
+          <button id="btn-export-telemetry" class="btn btn-success btn-sm">Exporter CSV</button>
+          <button id="btn-clear-telemetry" class="btn btn-secondary btn-sm">Effacer</button>
+        </div>
+      </div>
       <div class="card-content table-container">
         <table id="table-telemetry">
           <thead>
@@ -213,7 +228,10 @@
 
     <!-- 6. TERMINAL DE COMMANDES SÉRIE -->
     <section class="card terminal-panel full-width">
-      <h2>📟 Console & Terminal</h2>
+      <div class="card-header">
+        <h2>📟 Console & Terminal</h2>
+        <button id="btn-clear-terminal" class="btn btn-secondary btn-sm">Effacer</button>
+      </div>
       <div class="card-content terminal-content">
         <div id="terminal-logs" class="terminal-view"></div>
         <form id="terminal-form" class="terminal-input-row">
@@ -229,6 +247,6 @@
     <p>&copy; 2026 Nectar Project - Conçu pour les récepteurs RocketStation-LoRa32</p>
   </footer>
 
-  <script type="module" src="app.js?v=1.3.5-trackers-table"></script>
+  <script type="module" src="app.js?v=1.3.6-clear-and-features"></script>
 </body>
 </html>
