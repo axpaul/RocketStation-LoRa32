@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nectar Rx Station - Web Control Panel</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="glow-bg"></div>
+  
+  <header>
+    <div class="logo-container">
+      <div class="antenna-icon">
+        <div class="antenna-mast"></div>
+        <div class="antenna-ring ring-1"></div>
+        <div class="antenna-ring ring-2"></div>
+        <div class="antenna-ring ring-3"></div>
+      </div>
+      <div>
+        <h1>NECTAR RX STATION</h1>
+        <p class="subtitle">Web Control Center v1.3.1</p>
+      </div>
+    </div>
+    <div id="conn-badge" class="badge disconnected">Déconnecté</div>
+  </header>
+
+  <main class="dashboard-grid">
+    <!-- 1. PANNEAU DE CONNEXION SÉRIE -->
+    <section class="card connection-panel">
+      <h2>🔌 Liaison Série USB</h2>
+      <div class="card-content">
+        <div class="form-group">
+          <label for="baudrate">Vitesse de transmission (Baud) :</label>
+          <select id="baudrate">
+            <option value="115200" selected>115200</option>
+            <option value="9600">9600</option>
+            <option value="57600">57600</option>
+          </select>
+        </div>
+        <div class="button-group-row">
+          <button id="btn-connect" class="btn btn-primary">Connexion</button>
+          <button id="btn-disconnect" class="btn btn-danger" disabled>Déconnexion</button>
+        </div>
+        <div class="port-info text-secondary">
+          Statut : <span id="lbl-port-name">Aucun appareil connecté</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. CONFIGURATION DE LA RADIO (AT COMMANDS) -->
+    <section class="card config-panel">
+      <h2>⚙️ Paramètres Radio</h2>
+      <div class="card-content">
+        <div class="form-group">
+          <label for="input-freq">Fréquence (MHz) :</label>
+          <div class="input-with-unit">
+            <input type="number" id="input-freq" min="400" max="900" step="0.001" placeholder="Ex: 869.525" disabled>
+            <span class="unit">MHz</span>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="select-sf">Spreading Factor (SF) :</label>
+          <select id="select-sf" disabled>
+            <option value="6">SF6</option>
+            <option value="7">SF7</option>
+            <option value="8" selected>SF8</option>
+            <option value="9">SF9</option>
+            <option value="10">SF10</option>
+            <option value="11">SF11</option>
+            <option value="12">SF12</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="input-bw">Bande Passante (BW) :</label>
+          <div class="input-with-unit">
+            <input type="number" id="input-bw" min="7.8" max="500.0" step="0.1" placeholder="Ex: 250.0" disabled>
+            <span class="unit">kHz</span>
+          </div>
+        </div>
+
+        <div class="button-group-grid">
+          <button id="btn-read-cfg" class="btn btn-secondary" disabled>Actualiser</button>
+          <button id="btn-write-cfg" class="btn btn-accent" disabled>Appliquer</button>
+          <button id="btn-save-cfg" class="btn btn-success" disabled>Sauver NVS</button>
+          <button id="btn-reset-cfg" class="btn btn-danger" disabled>Reset Usine</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. STATISTIQUES ET TENDANCE RSSI/SNR -->
+    <section class="card stats-panel">
+      <h2>📊 Qualité de Liaison</h2>
+      <div class="card-content stats-content">
+        <div class="mini-stats">
+          <div class="stat-box">
+            <span class="stat-val" id="stat-rssi">--</span>
+            <span class="stat-lbl">RSSI (dBm)</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-val" id="stat-snr">--</span>
+            <span class="stat-lbl">SNR (dB)</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-val" id="stat-count">0</span>
+            <span class="stat-lbl">Trames Reçues</span>
+          </div>
+        </div>
+        
+        <div class="chart-container">
+          <svg id="rssi-chart" viewBox="0 0 300 100" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="chart-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--color-cyan)" stop-opacity="0.3"></stop>
+                <stop offset="100%" stop-color="var(--color-cyan)" stop-opacity="0"></stop>
+              </linearGradient>
+            </defs>
+            <path id="chart-fill" d="M 0 100 L 300 100 Z" fill="url(#chart-grad)"></path>
+            <path id="chart-line" d="" fill="none" stroke="var(--color-cyan)" stroke-width="2" stroke-linecap="round"></path>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. FLASHEUR / METTRE À JOUR LE FIRMWARE -->
+    <section class="card flasher-panel">
+      <h2>⚡ Mise à Jour Firmware</h2>
+      <div class="card-content">
+        <p class="description">Flashez directement la version <strong>v1.3.1</strong> depuis votre navigateur par port USB.</p>
+        <div class="form-group">
+          <label for="select-band">Bande Radio native de la carte :</label>
+          <select id="select-band">
+            <option value="868" selected>868 MHz (Europe)</option>
+            <option value="433">433 MHz</option>
+          </select>
+        </div>
+        <button id="btn-flash" class="btn btn-primary">Flasher la carte (v1.3.1)</button>
+        
+        <div id="flash-progress-container" class="progress-container hidden">
+          <div class="progress-bar-wrapper">
+            <div id="flash-progress-bar" class="progress-bar"></div>
+          </div>
+          <div class="progress-text">
+            Statut : <span id="lbl-flash-status">Attente...</span> (<span id="lbl-flash-percent">0%</span>)
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. TÉLÉMÉTRIE LIVE (TABLEAU) -->
+    <section class="card telemetry-panel full-width">
+      <h2>📡 Trames reçues en direct (NectarMC)</h2>
+      <div class="card-content table-container">
+        <table id="table-telemetry">
+          <thead>
+            <tr>
+              <th>Index</th>
+              <th>Horodatage</th>
+              <th>Tracker (SSID)</th>
+              <th>APID</th>
+              <th>Taille</th>
+              <th>RSSI</th>
+              <th>SNR</th>
+              <th>Charge Utile (Hex)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="row-empty">
+              <td colspan="8" class="text-center text-secondary">Aucune trame reçue pour l'instant. Branchez le port série et mettez sous tension vos trackers.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 6. TERMINAL DE COMMANDES SÉRIE -->
+    <section class="card terminal-panel full-width">
+      <h2>📟 Console & Terminal</h2>
+      <div class="card-content terminal-content">
+        <div id="terminal-logs" class="terminal-view"></div>
+        <form id="terminal-form" class="terminal-input-row">
+          <span class="prompt">&gt;</span>
+          <input type="text" id="terminal-input" placeholder="Tapez une commande AT (ex: AT, AT+FREQ?, AT+CFG)..." disabled>
+          <button type="submit" id="btn-send" class="btn btn-secondary" disabled>Envoyer</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Nectar Project - Conçu pour les récepteurs RocketStation-LoRa32</p>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
