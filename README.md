@@ -70,6 +70,12 @@ Pour que la station puisse router dynamiquement les trames vers le logiciel [Nec
 | **Octet 2** | `uint8_t` | `SSID_TYPE` | Type de mission (`0` = FX, `1` = MF, `2` = BALLOON, `3` = OTHER) |
 | **Octets 3 à L-1** | `uint8_t[]` | `Payload` | Données brutes des capteurs (taille variable L-3) |
 
+> [!NOTE]
+> **Contrôle d'intégrité (CRC) de la liaison radio :**
+> Conformément aux spécifications de la [documentation de NectarMC](https://github.com/mlavardin/NectarMC/blob/master/DOCUMENTATION/FRAME_FORMAT.md), le contrôle d'intégrité (CRC) du lien radio peut s'effectuer de deux façons :
+> 1. **CRC matériel (Puce radio)** : C'est le mode activé par défaut sur cette station réceptrice. Le CRC radio physique est géré au niveau silicium par le module SX1276 pour écarter directement tout paquet corrompu lors de la transmission aérienne.
+> 2. **CRC logiciel (Calculé par l'émetteur)** : Alternativement, l'émetteur peut calculer lui-même un CRC logiciel et l'ajouter en fin de `Payload`. La station le recevra et le transmettra de manière totalement transparente au PC.
+
 ---
 
 ## 💻 Format de trame série NectarMC (Sortie USB / Bluetooth)
@@ -86,14 +92,19 @@ Les trames émises par la station sol vers le PC sur le port série USB et la li
 └─────────────┴──────────────┴──────────────┴───────────────────┴─────────┴─────────┴───────────────────┴───────────────┘
 ```
 
-*   **MAGIC** : `0xEB` (Marqueur de synchronisation).
-*   **Id_mission** : Fusion du SSID (TYPE sur bits 15-14, NUM sur bits 13-6) et de l'APID (bits 5-0) sur 16 bits.
-*   **payload_size** : Nombre d'octets $N$ de la charge utile LoRa brute reçue de la fusée.
-*   **PAYLOAD** : Les $N$ octets de données utiles brutes reçues de la fusée.
-*   **RSSI** : 1 octet (entier signé `int8_t` en dBm) exprimant le niveau du signal reçu.
-*   **SNR** : 1 octet (entier signé `int8_t` codant la valeur du SNR multipliée par 4) offrant une résolution de 0.25 dB (plage de -32 dB à +31.75 dB).
-*   **Timestamp** : 4 octets (`uint32_t` Little-Endian, epoch Unix absolu en secondes) représentant l'heure exacte de réception.
-*   **CRC16** : Calculé sur l'ensemble **Header + Payload + RSSI + SNR + Timestamp** (soit $10 + N$ octets) avec le polynôme standard CCITT 0x1021, valeur initiale 0xFFFF.
+### 📊 Description détaillée des octets de la trame série
+
+| Position | Type | Nom du Champ | Description |
+| :--- | :--- | :--- | :--- |
+| **Octet 0** | `uint8_t` | `MAGIC` | Marqueur de synchronisation de début de trame. Toujours égal à `0xEB`. |
+| **Octets 1 à 2** | `uint16_t` | `Id_mission` | Identifiant unique de mission codé en Little-Endian. Regroupe sur 16 bits :<br>- Le type de tracker (`SSID_TYPE`, 2 bits de poids fort, bits 15-14)<br>- Le numéro du tracker (`SSID_NUM`, 8 bits, bits 13-6)<br>- L'identifiant de paquet (`APID`, 6 bits de poids faible, bits 5-0) |
+| **Octet 3** | `uint8_t` | `payload_size` | Longueur $N$ de la charge utile LoRa brute en octets. |
+| **Octets 4 à 4 + N - 1** | `uint8_t[]` | `Payload` | Données utiles brutes provenant directement du tracker LoRa ($N$ octets). |
+| **Octet 4 + N** | `int8_t` | `RSSI` | Niveau de puissance du signal reçu en dBm. Entier signé (ex: `-85` dBm). |
+| **Octet 4 + N + 1** | `int8_t` | `SNR` | Rapport signal/bruit. Multiplié par 4 à l'émission pour encoder une précision de 0.25 dB (ex: `38` pour 9.5 dB, plage utile : -32 dB à +31.75 dB). |
+| **Octets 4 + N + 2 à 4 + N + 5** | `uint32_t` | `Timestamp` | Horodatage de réception absolu (Epoch Unix en secondes) codé en Little-Endian. |
+| **Octets 4 + N + 6 à 4 + N + 7** | `uint16_t` | `CRC16` | Somme de contrôle de validation (polynôme CCITT 0x1021, init 0xFFFF, Little-Endian) calculée sur l'ensemble Header, Payload et Métadonnées (de l'octet 0 à $4+N+5$ inclus). |
+| **Octet 4 + N + 8** | `char` | `Newline` | Caractère retour à la ligne `\n` (`0x0A`) facilitant la détection de fin et la journalisation brute. |
 
 > [!TIP]
 > **Gestion intelligente du temps :**
