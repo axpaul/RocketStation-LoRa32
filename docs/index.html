@@ -145,12 +145,11 @@
             <span class="stat-lbl" data-i18n="stats_snr">SNR (dB)</span>
           </div>
           <div class="stat-box">
-            <span class="stat-val" id="stat-count">0</span>
-            <span class="stat-lbl" data-i18n="stats_count">Trames Reçues</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-val" id="stat-crc-errors" style="color: var(--color-danger);">0</span>
-            <span class="stat-lbl" data-i18n="stats_crc_errors">Erreurs CRC</span>
+            <span class="stat-val" id="stat-count-container">
+              <span id="stat-count">0</span>
+              <span style="font-size: 0.9rem; color: var(--color-danger); font-weight: 600; margin-left: 2px;">/ <span id="stat-crc-errors">0</span> KO</span>
+            </span>
+            <span class="stat-lbl" data-i18n="stats_count">Trames (Reçues / KO)</span>
           </div>
         </div>
         
