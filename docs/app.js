@@ -34,7 +34,7 @@ const selectBaudrate = document.getElementById('baudrate');
 // Inputs Configuration
 const inputFreq = document.getElementById('input-freq');
 const selectSf = document.getElementById('select-sf');
-const selectBw = document.getElementById('select-bw');
+const selectBw = document.getElementById('select-bw') || document.getElementById('input-bw');
 
 // Boutons Configuration
 const btnReadCfg = document.getElementById('btn-read-cfg');
@@ -65,10 +65,18 @@ const lblFlashPercent = document.getElementById('lbl-flash-percent');
 const tableTelemetryBody = document.querySelector('#table-telemetry tbody');
 const rowEmpty = document.getElementById('row-empty');
 
+// Helper sécurisé pour activer/désactiver un élément s'il existe
+function setElementDisabled(el, disabled) {
+  if (el) {
+    el.disabled = disabled;
+  }
+}
+
 // ============================================================================
 // Fonctions d'Affichage & Utilitaires
 // ============================================================================
 function logToTerminal(message, type = 'cmd-out') {
+  if (!terminalLogs) return;
   const div = document.createElement('div');
   div.className = type;
   div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
@@ -78,43 +86,29 @@ function logToTerminal(message, type = 'cmd-out') {
 
 function updateConnectionUI(connected, name = '') {
   isConnected = connected;
-  if (connected) {
-    connBadge.textContent = 'Connecté';
-    connBadge.className = 'badge connected';
-    lblPortName.textContent = `Port : ${name}`;
-    btnConnect.disabled = true;
-    btnDisconnect.disabled = false;
-    selectBaudrate.disabled = true;
-
-    // Activer les contrôles
-    inputFreq.disabled = false;
-    selectSf.disabled = false;
-    selectBw.disabled = false;
-    btnReadCfg.disabled = false;
-    btnWriteCfg.disabled = false;
-    btnSaveCfg.disabled = false;
-    btnResetCfg.disabled = false;
-    terminalInput.disabled = false;
-    btnSend.disabled = false;
-  } else {
-    connBadge.textContent = 'Déconnecté';
-    connBadge.className = 'badge disconnected';
-    lblPortName.textContent = 'Aucun appareil connecté';
-    btnConnect.disabled = false;
-    btnDisconnect.disabled = true;
-    selectBaudrate.disabled = false;
-
-    // Désactiver les contrôles
-    inputFreq.disabled = true;
-    selectSf.disabled = true;
-    selectBw.disabled = true;
-    btnReadCfg.disabled = true;
-    btnWriteCfg.disabled = true;
-    btnSaveCfg.disabled = true;
-    btnResetCfg.disabled = true;
-    terminalInput.disabled = true;
-    btnSend.disabled = true;
+  if (connBadge) {
+    connBadge.textContent = connected ? 'Connecté' : 'Déconnecté';
+    connBadge.className = connected ? 'badge connected' : 'badge disconnected';
   }
+  if (lblPortName) {
+    lblPortName.textContent = connected ? `Port : ${name}` : 'Aucun appareil connecté';
+  }
+  
+  setElementDisabled(btnConnect, connected);
+  setElementDisabled(btnDisconnect, !connected);
+  setElementDisabled(selectBaudrate, connected);
+
+  // Activer/Désactiver les contrôles
+  const disabledState = !connected;
+  setElementDisabled(inputFreq, disabledState);
+  setElementDisabled(selectSf, disabledState);
+  setElementDisabled(selectBw, disabledState);
+  setElementDisabled(btnReadCfg, disabledState);
+  setElementDisabled(btnWriteCfg, disabledState);
+  setElementDisabled(btnSaveCfg, disabledState);
+  setElementDisabled(btnResetCfg, disabledState);
+  setElementDisabled(terminalInput, disabledState);
+  setElementDisabled(btnSend, disabledState);
 }
 
 // Convertit un tableau d'octets en chaîne hexadécimale continue
@@ -131,7 +125,7 @@ async function connectSerial() {
   if ('serial' in navigator) {
     try {
       port = await navigator.serial.requestPort();
-      const baud = parseInt(selectBaudrate.value, 10);
+      const baud = selectBaudrate ? parseInt(selectBaudrate.value, 10) : 115200;
       
       logToTerminal(`Ouverture du port série à ${baud} baud...`, 'sys-out');
       await port.open({ baudRate: baud });
@@ -330,28 +324,32 @@ function decodeNectarFrame(frame) {
     rowEmpty.style.display = 'none';
   }
   
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td>${packetIndex}</td>
-    <td>${timestamp}</td>
-    <td><span class="badge connected">${trackerName}</span></td>
-    <td>${apid}</td>
-    <td>${payloadSize} octets</td>
-    <td>-- <span class="text-secondary">(OLED)</span></td>
-    <td>-- <span class="text-secondary">(OLED)</span></td>
-    <td>${bytesToHex(payload)}</td>
-  `;
-  
-  // Insérer en haut de la table (trames les plus récentes en premier)
-  tableTelemetryBody.insertBefore(tr, tableTelemetryBody.firstChild);
-  
-  // Limiter le nombre de lignes à 50
-  if (tableTelemetryBody.children.length > 50) {
-    tableTelemetryBody.removeChild(tableTelemetryBody.lastChild);
+  if (tableTelemetryBody) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${packetIndex}</td>
+      <td>${timestamp}</td>
+      <td><span class="badge connected">${trackerName}</span></td>
+      <td>${apid}</td>
+      <td>${payloadSize} octets</td>
+      <td>-- <span class="text-secondary">(OLED)</span></td>
+      <td>-- <span class="text-secondary">(OLED)</span></td>
+      <td>${bytesToHex(payload)}</td>
+    `;
+    
+    // Insérer en haut de la table (trames les plus récentes en premier)
+    tableTelemetryBody.insertBefore(tr, tableTelemetryBody.firstChild);
+    
+    // Limiter le nombre de lignes à 50
+    if (tableTelemetryBody.children.length > 50) {
+      tableTelemetryBody.removeChild(tableTelemetryBody.lastChild);
+    }
   }
 
   // Mettre à jour les indicateurs
-  statCount.textContent = packetIndex;
+  if (statCount) {
+    statCount.textContent = packetIndex;
+  }
 }
 
 // Analyse des réponses textuelles AT
@@ -360,19 +358,25 @@ function parseATResponse(line) {
   if (line.startsWith('+FREQ:')) {
     const val = parseFloat(line.split(':')[1]);
     currentConfig.frequency = val;
-    inputFreq.value = val.toFixed(3);
+    if (inputFreq) {
+      inputFreq.value = val.toFixed(3);
+    }
   }
   // Spreading Factor : "+SF: <valeur>"
   else if (line.startsWith('+SF:')) {
     const val = parseInt(line.split(':')[1], 10);
     currentConfig.sf = val;
-    selectSf.value = val;
+    if (selectSf) {
+      selectSf.value = val;
+    }
   }
   // Bande Passante : "+BW: <valeur>"
   else if (line.startsWith('+BW:')) {
     const val = parseFloat(line.split(':')[1]);
     currentConfig.bw = val;
-    selectBw.value = val.toString();
+    if (selectBw) {
+      selectBw.value = val.toString();
+    }
   }
 }
 
@@ -394,11 +398,11 @@ function updateThroughputChart() {
     
     // Mettre à jour l'indicateur de débit s'il y a des paquets
     if (dataRate > 0) {
-      statRssi.textContent = "ACTIF";
-      statSnr.textContent = `${dataRate} B/s`;
+      if (statRssi) statRssi.textContent = "ACTIF";
+      if (statSnr) statSnr.textContent = `${dataRate} B/s`;
     } else {
-      statRssi.textContent = "--";
-      statSnr.textContent = "--";
+      if (statRssi) statRssi.textContent = "--";
+      if (statSnr) statSnr.textContent = "--";
     }
     
     // Redessiner le graphique SVG
@@ -441,46 +445,58 @@ setInterval(updateThroughputChart, 1000);
 // ============================================================================
 // Événements des boutons de Configuration
 // ============================================================================
-btnReadCfg.addEventListener('click', () => {
-  sendSerialText('AT+FREQ?');
-  sendSerialText('AT+SF?');
-  sendSerialText('AT+BW?');
-});
+if (btnReadCfg) {
+  btnReadCfg.addEventListener('click', () => {
+    sendSerialText('AT+FREQ?');
+    sendSerialText('AT+SF?');
+    sendSerialText('AT+BW?');
+  });
+}
 
-btnWriteCfg.addEventListener('click', () => {
-  const freq = parseFloat(inputFreq.value);
-  const sf = parseInt(selectSf.value, 10);
-  const bw = parseFloat(selectBw.value);
-  
-  if (!isNaN(freq)) sendSerialText(`AT+FREQ=${freq.toFixed(3)}`);
-  if (!isNaN(sf)) sendSerialText(`AT+SF=${sf}`);
-  if (!isNaN(bw)) sendSerialText(`AT+BW=${bw.toFixed(1)}`);
-});
+if (btnWriteCfg) {
+  btnWriteCfg.addEventListener('click', () => {
+    const freq = inputFreq ? parseFloat(inputFreq.value) : NaN;
+    const sf = selectSf ? parseInt(selectSf.value, 10) : NaN;
+    const bw = selectBw ? parseFloat(selectBw.value) : NaN;
+    
+    if (!isNaN(freq)) sendSerialText(`AT+FREQ=${freq.toFixed(3)}`);
+    if (!isNaN(sf)) sendSerialText(`AT+SF=${sf}`);
+    if (!isNaN(bw)) sendSerialText(`AT+BW=${bw.toFixed(1)}`);
+  });
+}
 
-btnSaveCfg.addEventListener('click', () => {
-  sendSerialText('AT+SAVE');
-});
+if (btnSaveCfg) {
+  btnSaveCfg.addEventListener('click', () => {
+    sendSerialText('AT+SAVE');
+  });
+}
 
-btnResetCfg.addEventListener('click', () => {
-  if (confirm("Voulez-vous restaurer les paramètres d'usine ? La carte va redémarrer.")) {
-    sendSerialText('AT+RESET');
-  }
-});
+if (btnResetCfg) {
+  btnResetCfg.addEventListener('click', () => {
+    if (confirm("Voulez-vous restaurer les paramètres d'usine ? La carte va redémarrer.")) {
+      sendSerialText('AT+RESET');
+    }
+  });
+}
 
-terminalForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const cmd = terminalInput.value.trim();
-  if (cmd) {
-    sendSerialText(cmd);
-    terminalInput.value = '';
-  }
-});
+if (terminalForm) {
+  terminalForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (terminalInput) {
+      const cmd = terminalInput.value.trim();
+      if (cmd) {
+        sendSerialText(cmd);
+        terminalInput.value = '';
+      }
+    }
+  });
+}
 
 // ============================================================================
 // Flasheur de Firmware Web (ESPTool)
 // ============================================================================
 async function flashFirmware() {
-  const band = selectBand.value;
+  const band = selectBand ? selectBand.value : '868';
   const binUrl = `binaries/firmware_bluetooth_${band}.bin`;
   
   if (isConnected) {
@@ -488,18 +504,18 @@ async function flashFirmware() {
     await disconnectSerial();
   }
   
-  btnFlash.disabled = true;
-  flashProgressContainer.classList.remove('hidden');
-  lblFlashStatus.textContent = "Connexion à l'ESP32...";
-  lblFlashPercent.textContent = "0%";
-  flashProgressBar.style.width = "0%";
+  setElementDisabled(btnFlash, true);
+  if (flashProgressContainer) flashProgressContainer.classList.remove('hidden');
+  if (lblFlashStatus) lblFlashStatus.textContent = "Connexion à l'ESP32...";
+  if (lblFlashPercent) lblFlashPercent.textContent = "0%";
+  if (flashProgressBar) flashProgressBar.style.width = "0%";
   
   let esploader = null;
   let transport = null;
   
   const customTerminal = {
     clean() {
-      terminalLogs.innerHTML = '';
+      if (terminalLogs) terminalLogs.innerHTML = '';
     },
     writeLine(data) {
       logToTerminal(data, 'sys-out');
@@ -522,10 +538,10 @@ async function flashFirmware() {
       baudrate: 115200 // vitesse de synchronisation bootloader
     });
     
-    lblFlashStatus.textContent = "Synchronisation de la carte...";
+    if (lblFlashStatus) lblFlashStatus.textContent = "Synchronisation de la carte...";
     await esploader.main();
     
-    lblFlashStatus.textContent = `Puce détectée : ${esploader.chipName}`;
+    if (lblFlashStatus) lblFlashStatus.textContent = `Puce détectée : ${esploader.chipName}`;
     logToTerminal(`Téléchargement du firmware depuis ${binUrl}...`, "sys-out");
     
     const response = await fetch(binUrl);
@@ -536,7 +552,7 @@ async function flashFirmware() {
     const arrayBuffer = await response.arrayBuffer();
     const firmwareData = new Uint8Array(arrayBuffer);
     
-    lblFlashStatus.textContent = "Écriture en cours (flash)...";
+    if (lblFlashStatus) lblFlashStatus.textContent = "Écriture en cours (flash)...";
     logToTerminal("Début de l'écriture de l'application à 0x10000...", "sys-out");
     
     const fileArray = [
@@ -552,12 +568,12 @@ async function flashFirmware() {
       compress: true,
       reportProgress: (fileIndex, written, total) => {
         const percent = Math.round((written / total) * 100);
-        lblFlashPercent.textContent = `${percent}%`;
-        flashProgressBar.style.width = `${percent}%`;
+        if (lblFlashPercent) lblFlashPercent.textContent = `${percent}%`;
+        if (flashProgressBar) flashProgressBar.style.width = `${percent}%`;
       }
     });
     
-    lblFlashStatus.textContent = "Flash Réussi !";
+    if (lblFlashStatus) lblFlashStatus.textContent = "Flash Réussi !";
     logToTerminal("Mise à jour terminée ! Redémarrage de la carte...", "sys-out");
     
     // Redémarrer la carte matériellement
@@ -566,7 +582,7 @@ async function flashFirmware() {
     await transport.setDTR(true);
     
   } catch (err) {
-    lblFlashStatus.textContent = "ÉCHEC !";
+    if (lblFlashStatus) lblFlashStatus.textContent = "ÉCHEC !";
     logToTerminal(`Erreur lors du flash : ${err.message}`, 'sys-out');
     console.error(err);
   } finally {
@@ -575,16 +591,16 @@ async function flashFirmware() {
         await transport.disconnect();
       } catch (err) {}
     }
-    btnFlash.disabled = false;
+    setElementDisabled(btnFlash, false);
   }
 }
 
 // ============================================================================
 // Événements d'Initialisation
 // ============================================================================
-btnConnect.addEventListener('click', connectSerial);
-btnDisconnect.addEventListener('click', disconnectSerial);
-btnFlash.addEventListener('click', flashFirmware);
+if (btnConnect) btnConnect.addEventListener('click', connectSerial);
+if (btnDisconnect) btnDisconnect.addEventListener('click', disconnectSerial);
+if (btnFlash) btnFlash.addEventListener('click', flashFirmware);
 
 // Détecter si le port a été déconnecté matériellement (câble arraché)
 navigator.serial?.addEventListener('disconnect', (event) => {
