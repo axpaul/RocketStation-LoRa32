@@ -10,6 +10,7 @@ let isConnected = false;
 let rxBuffer = [];
 let packetIndex = 0;
 let readLoopPromise = null; // Promesse pour suivre la fin de la boucle de lecture
+let activeTrackers = {};    // Dictionnaire des émetteurs détectés : { name: { typeLabel, lastApid, packetCount, lastSeen, lastPayloadHex } }
 
 // Variables pour le calcul de débit et le graphique
 let bytesCountThisSecond = 0;
@@ -328,9 +329,17 @@ function decodeNectarFrame(frame) {
   const crc = (frame[4 + payloadSize + 1] << 8) | frame[4 + payloadSize];
   
   let ssidPrefix = 'OTHER';
-  if (ssidType === 0) ssidPrefix = 'FX';
-  else if (ssidType === 1) ssidPrefix = 'MF';
-  else if (ssidType === 2) ssidPrefix = 'BALLOON';
+  let missionTypeLabel = 'Autre (OTHER)';
+  if (ssidType === 0) {
+    ssidPrefix = 'FX';
+    missionTypeLabel = 'Fusée (FX)';
+  } else if (ssidType === 1) {
+    ssidPrefix = 'MF';
+    missionTypeLabel = 'Minifusée (MF)';
+  } else if (ssidType === 2) {
+    ssidPrefix = 'BALLOON';
+    missionTypeLabel = 'Ballon (BALLOON)';
+  }
   
   const trackerName = `${ssidPrefix}${ssidNum}`;
   const timestamp = new Date().toLocaleTimeString();
@@ -362,10 +371,78 @@ function decodeNectarFrame(frame) {
     }
   }
 
+  // Mettre à jour la classification des trackers
+  if (!activeTrackers[trackerName]) {
+    activeTrackers[trackerName] = {
+      name: trackerName,
+      typeLabel: missionTypeLabel,
+      lastApid: apid,
+      packetCount: 0,
+      lastSeen: Date.now(),
+      lastPayloadHex: bytesToHex(payload)
+    };
+  }
+  
+  activeTrackers[trackerName].lastApid = apid;
+  activeTrackers[trackerName].packetCount++;
+  activeTrackers[trackerName].lastSeen = Date.now();
+  activeTrackers[trackerName].lastPayloadHex = bytesToHex(payload);
+  
+  updateTrackersTable();
+
   // Mettre à jour les indicateurs
   if (statCount) {
     statCount.textContent = packetIndex;
   }
+}
+
+// Met à jour la table des trackers actifs
+function updateTrackersTable() {
+  const tableBody = document.querySelector('#table-trackers tbody');
+  const rowEmptyTrackers = document.getElementById('row-empty-trackers');
+  if (!tableBody) return;
+
+  const names = Object.keys(activeTrackers).sort();
+  
+  if (names.length > 0 && rowEmptyTrackers) {
+    rowEmptyTrackers.style.display = 'none';
+  }
+
+  const now = Date.now();
+
+  names.forEach(name => {
+    const tracker = activeTrackers[name];
+    let row = document.getElementById(`tracker-row-${name}`);
+    
+    // Si pas de signal depuis 15 secondes, le tracker est marqué PERDU
+    const isLost = (now - tracker.lastSeen) > 15000;
+    const statusText = isLost ? 'PERDU' : 'ACTIF';
+    const statusClass = isLost ? 'badge disconnected' : 'badge connected';
+    
+    const timeString = new Date(tracker.lastSeen).toLocaleTimeString();
+
+    if (!row) {
+      row = document.createElement('tr');
+      row.id = `tracker-row-${name}`;
+      tableBody.appendChild(row);
+    }
+    
+    row.innerHTML = `
+      <td><span class="badge connected">${name}</span></td>
+      <td>${tracker.typeLabel}</td>
+      <td>${tracker.lastApid}</td>
+      <td>${tracker.packetCount}</td>
+      <td>${timeString}</td>
+      <td><span class="${statusClass}">${statusText}</span></td>
+      <td style="font-family: var(--font-mono); color: var(--color-cyan); word-break: break-all;">${tracker.lastPayloadHex}</td>
+    `;
+  });
+}
+
+// Vérifie si des trackers sont hors ligne
+function checkTrackersTimeout() {
+  if (Object.keys(activeTrackers).length === 0) return;
+  updateTrackersTable();
 }
 
 // Analyse des réponses textuelles AT
@@ -452,6 +529,9 @@ function updateThroughputChart() {
     
     // Redessiner le graphique SVG
     drawSvgChart();
+    
+    // Vérifier les timeouts des trackers
+    checkTrackersTimeout();
   }
 }
 

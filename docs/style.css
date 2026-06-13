@@ -503,9 +503,11 @@ td {
   font-family: var(--font-sans);
 }
 
-td:nth-child(8) {
+#table-telemetry td:nth-child(8),
+#table-trackers td:nth-child(7) {
   font-family: var(--font-mono);
   color: var(--color-cyan);
+  word-break: break-all;
 }
 
 /* Terminal & Log Console */

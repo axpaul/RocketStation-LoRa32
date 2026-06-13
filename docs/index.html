@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nectar Rx Station - Web Control Panel</title>
-  <link rel="stylesheet" href="style.css?v=1.3.4-final-antenna">
+  <link rel="stylesheet" href="style.css?v=1.3.5-trackers-table">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -160,6 +160,31 @@
       </div>
     </section>
 
+    <!-- 4.5 ÉMETTEURS DÉTECTÉS (TRACKERS) -->
+    <section class="card trackers-panel full-width">
+      <h2>🛸 Émetteurs Détectés (Active Trackers)</h2>
+      <div class="card-content table-container">
+        <table id="table-trackers">
+          <thead>
+            <tr>
+              <th>Tracker (SSID)</th>
+              <th>Type de Mission</th>
+              <th>Dernier APID</th>
+              <th>Trames Reçues</th>
+              <th>Dernière Activité</th>
+              <th>Statut</th>
+              <th>Charge Utile (Hex)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="row-empty-trackers">
+              <td colspan="7" class="text-center text-secondary">Aucun émetteur détecté pour l'instant. Branchez le récepteur LoRa pour intercepter les signaux.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- 5. TÉLÉMÉTRIE LIVE (TABLEAU) -->
     <section class="card telemetry-panel full-width">
       <h2>📡 Trames reçues en direct (NectarMC)</h2>
@@ -204,6 +229,6 @@
     <p>&copy; 2026 Nectar Project - Conçu pour les récepteurs RocketStation-LoRa32</p>
   </footer>
 
-  <script type="module" src="app.js?v=1.3.4-final-antenna"></script>
+  <script type="module" src="app.js?v=1.3.5-trackers-table"></script>
 </body>
 </html>
