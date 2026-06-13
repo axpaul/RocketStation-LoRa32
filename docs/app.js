@@ -32,9 +32,9 @@ const lblPortName = document.getElementById('lbl-port-name');
 const connBadge = document.getElementById('conn-badge');
 const selectBaudrate = document.getElementById('baudrate');
 
-// Inputs Configuration
+// Inputs Configuration (support des anciens ID 'input-*' si index.html est en cache)
 const inputFreq = document.getElementById('input-freq');
-const selectSf = document.getElementById('select-sf');
+const selectSf = document.getElementById('select-sf') || document.getElementById('input-sf');
 const selectBw = document.getElementById('select-bw') || document.getElementById('input-bw');
 
 // Boutons Configuration
@@ -140,12 +140,12 @@ async function connectSerial() {
       // Démarrer la boucle de lecture
       readLoopPromise = readSerialLoop();
 
-      // Envoyer une demande de configuration initiale
+      // Envoyer une demande de configuration initiale après le boot de la carte (6s)
       setTimeout(() => {
         sendSerialText('AT+FREQ?');
-        sendSerialText('AT+SF?');
-        sendSerialText('AT+BW?');
-      }, 500);
+        setTimeout(() => sendSerialText('AT+SF?'), 200);
+        setTimeout(() => sendSerialText('AT+BW?'), 400);
+      }, 6000);
 
     } catch (err) {
       logToTerminal(`Erreur de connexion : ${err.message}`, 'sys-out');
@@ -365,24 +365,53 @@ function decodeNectarFrame(frame) {
 
 // Analyse des réponses textuelles AT
 function parseATResponse(line) {
-  // Fréquence : "+FREQ: <valeur>"
+  // Ligne de boot : "[CONFIG] Loaded from NVS: Freq=869.525 MHz, SF=8, BW=250.0 kHz"
+  if (line.includes('Loaded from NVS:')) {
+    const match = line.match(/Freq=([\d.]+)\s*MHz,\s*SF=(\d+),\s*BW=([\d.]+)\s*kHz/i);
+    if (match) {
+      const freq = parseFloat(match[1]);
+      const sf = parseInt(match[2], 10);
+      const bw = parseFloat(match[3]);
+      
+      currentConfig.frequency = freq;
+      currentConfig.sf = sf;
+      currentConfig.bw = bw;
+      
+      if (inputFreq) inputFreq.value = freq.toFixed(3);
+      if (selectSf) selectSf.value = sf.toString();
+      if (selectBw) selectBw.value = bw.toString();
+      return;
+    }
+  }
+
+  // Fréquence : "+FREQ: <valeur>" ou rapport "Frequency (Active): <valeur> MHz"
   if (line.startsWith('+FREQ:')) {
     const val = parseFloat(line.split(':')[1]);
     currentConfig.frequency = val;
-    if (inputFreq) {
-      inputFreq.value = val.toFixed(3);
-    }
+    if (inputFreq) inputFreq.value = val.toFixed(3);
+  } else if (line.includes('Frequency (Active):')) {
+    const val = parseFloat(line.split(':')[1]);
+    currentConfig.frequency = val;
+    if (inputFreq) inputFreq.value = val.toFixed(3);
   }
-  // Spreading Factor : "+SF: <valeur>"
+  // Spreading Factor : "+SF: <valeur>" ou rapport "Spreading Factor  : <valeur>"
   else if (line.startsWith('+SF:')) {
     const val = parseInt(line.split(':')[1], 10);
     currentConfig.sf = val;
-    if (selectSf) {
-      selectSf.value = val;
-    }
+    if (selectSf) selectSf.value = val.toString();
+  } else if (line.includes('Spreading Factor')) {
+    const val = parseInt(line.split(':')[1], 10);
+    currentConfig.sf = val;
+    if (selectSf) selectSf.value = val.toString();
   }
-  // Bande Passante : "+BW: <valeur>"
+  // Bande Passante : "+BW: <valeur>" ou rapport "Bandwidth         : <valeur> kHz"
   else if (line.startsWith('+BW:')) {
+    const val = parseFloat(line.split(':')[1]);
+    currentConfig.bw = val;
+    if (selectBw) {
+      selectBw.value = val.toString();
+    }
+  } else if (line.includes('Bandwidth')) {
     const val = parseFloat(line.split(':')[1]);
     currentConfig.bw = val;
     if (selectBw) {
