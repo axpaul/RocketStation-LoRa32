@@ -61,7 +61,11 @@ Les informations détaillées s'affichent sous forme de deux écrans alternant a
 
 ## Structure de la trame radio LoRa (Émetteurs)
 
-Les trames radio LoRa émises par les trackers/émetteurs vers la station au sol doivent respecter la structure binaire suivante (taille totale : $3 + N$ octets) :
+Les trames radio LoRa émises par les trackers/émetteurs vers la station au sol doivent respecter la structure binaire suivante en fonction du mode de contrôle d'intégrité de la liaison choisi :
+
+### Option A : Avec CRC matériel (Recommandé & Par défaut)
+C'est le mode par défaut de cette station de réception. Le contrôle d'intégrité est pris en charge directement au niveau silicium par le module radio SX1276.
+*   Taille totale de la trame LoRa : $3 + N$ octets.
 
 ```
 ┌───────────────────────────────────────────────────────────┬───────────────────┐
@@ -73,6 +77,20 @@ Les trames radio LoRa émises par les trackers/émetteurs vers la station au sol
 └──────────────────────┴───────────────┴────────────────────┴───────────────────┘
 ```
 
+### Option B : Avec CRC logiciel (Si le CRC matériel est désactivé)
+Si le CRC matériel de la puce LoRa n'est pas utilisé, l'émetteur doit calculer et ajouter une somme de contrôle logicielle CRC16 de 2 octets immédiatement à la suite de la charge utile de données.
+*   Taille totale de la trame LoRa : $5 + N$ octets.
+
+```
+┌───────────────────────────────────────────────────────────┬───────────────────┬───────────────┐
+│                          HEADER                           │      PAYLOAD      │    CONTROL    │
+├───────────────────────────────────────────────────────────┼───────────────────┼───────────────┤
+│       SSID_NUM       │     APID      │     SSID_TYPE      │      N data       │     CRC16     │
+│        1 Byte        │    1 Byte     │       1 Byte       │       bytes       │    2 Bytes    │
+│       (0-255)        │    (0-63)     │       (0-3)        │     (N bytes)     │  (Software)   │
+└──────────────────────┴───────────────┴────────────────────┴───────────────────┴───────────────┘
+```
+
 ### Description des octets de la trame radio
 
 | Position | Type | Nom du Champ | Description |
@@ -81,12 +99,11 @@ Les trames radio LoRa émises par les trackers/émetteurs vers la station au sol
 | **Octet 1** | `uint8_t` | `APID` | Identifiant du processus applicatif ou type de paquet (de 0 à 63). |
 | **Octet 2** | `uint8_t` | `SSID_TYPE` | Type de mission (`0` = FX, `1` = MF, `2` = BALLOON, `3` = OTHER). |
 | **Octets 3 à 2+N** | `uint8_t[]` | `Payload` | Charge utile contenant les données brutes des capteurs ($N$ octets). |
+| **Octets 3+N à 4+N** | `uint16_t` | `CRC16` | *(Option B uniquement)* Somme de contrôle logicielle de 2 octets en Little-Endian. |
 
 > [!NOTE]
-> **Contrôle d'intégrité (CRC) de la liaison radio :**
-> Conformément aux spécifications de la [documentation de NectarMC](https://github.com/mlavardin/NectarMC/blob/master/DOCUMENTATION/FRAME_FORMAT.md), le contrôle d'intégrité (CRC) du lien radio peut s'effectuer de deux façons :
-> 1. **CRC matériel (Puce radio)** : C'est le mode activé par défaut sur cette station réceptrice. Le CRC radio physique est géré au niveau silicium par le module SX1276 pour écarter directement tout paquet corrompu lors de la transmission aérienne.
-> 2. **CRC logiciel (Calculé par l'émetteur)** : Alternativement, l'émetteur peut calculer lui-même un CRC logiciel et l'ajouter en fin de `Payload`. La station le recevra et le transmettra de manière totalement transparente au PC.
+> **Compatibilité et configuration de la station :**
+> La station de réception sol est configurée par défaut avec le **CRC matériel activé** (`radio->setCRC(true)` dans `src/radio.cpp`), ce qui correspond à l'**Option A** (conforme aux spécifications de la [documentation de NectarMC](https://github.com/mlavardin/NectarMC/blob/master/DOCUMENTATION/FRAME_FORMAT.md)). Si vous souhaitez basculer sur l'**Option B**, vous devez configurer `radio->setCRC(false)` dans le code source de l'ESP32 et faire gérer la validation de la trame par votre décodeur applicatif.
 
 ---
 
