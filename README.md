@@ -13,12 +13,6 @@ Le but principal de cette station est d'assurer l'interface de réception physiq
 > Pilotez et flashez votre station sol directement depuis votre navigateur, sans aucune installation :
 > # 🚀 **[Accéder à la Console Web & Flasheur en Ligne](https://axpaul.github.io/RocketStation-LoRa32/)**
 > *Compatible avec Chrome, Edge et Opera (via l'API Web Serial)*
->
-> ---
->
-> ### 🖥️ Logiciel Officiel de Visualisation : NectarMC
-> Cette station sol transmet ses données en temps réel au logiciel officiel de traitement et de visualisation 3D de télémétrie :
-> # 🛰️ **[Découvrir NectarMC sur GitHub](https://github.com/mlavardin/NectarMC)**
 
 Cette version du logiciel est optimisée pour être compatible avec le logiciel [NectarMC](https://github.com/mlavardin/NectarMC) en générant des trames binaires série conformes, en gérant dynamiquement les trackers et en enregistrant l'historique sur carte SD.
 
@@ -215,6 +209,14 @@ pio run -t upload
 ## 🚀 Évolutions Futures (Roadmap)
 
 *   **Compatibilité BLE (Bluetooth Low Energy)** : Remplacement ou double support du Bluetooth Classic par le BLE pour réduire considérablement la consommation d'énergie de la station sol, et assurer une compatibilité native et immédiate avec les appareils iOS (iPhones/iPads).
+
+---
+
+## 🖥️ Logiciel Officiel de Visualisation
+
+Cette station sol est entièrement optimisée pour envoyer ses trames de télémétrie décodées au logiciel officiel de traitement et de visualisation 3D :
+
+👉 **[Découvrir NectarMC sur GitHub](https://github.com/mlavardin/NectarMC)**
 
 ---
 
