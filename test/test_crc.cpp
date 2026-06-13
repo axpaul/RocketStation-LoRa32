@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <unity.h>
 
-// Copie locale de la fonction à tester pour éviter les bugs de dépendances SCons de PlatformIO
+// 1. Fonction de calcul du CRC16-CCITT sous test
 uint16_t calculate_crc16(const uint8_t *data, size_t len) {
     if (data == nullptr || len == 0) {
         return 0xFFFF;
@@ -20,9 +20,27 @@ uint16_t calculate_crc16(const uint8_t *data, size_t len) {
     return crc;
 }
 
+// 2. Fonction de conversion Hexadécimale rapide sous test (SD Card logging)
+void bytes_to_hex_string(const uint8_t *bytes, size_t len, char *hex_str) {
+    static const char hexChars[] = "0123456789ABCDEF";
+    for (size_t i = 0; i < len; i++) {
+        hex_str[i * 2] = hexChars[(bytes[i] >> 4) & 0x0F];
+        hex_str[i * 2 + 1] = hexChars[bytes[i] & 0x0F];
+    }
+    hex_str[len * 2] = '\0';
+}
+
+// 3. Fonction mathématique de conversion de tension de batterie ADC sous test
+float convert_adc_to_voltage(uint32_t adc_val) {
+    return (adc_val / 4095.0f) * 3.3f * 2.0f * 1.05f;
+}
+
+// ============================================================================
+// Cas de Test
+// ============================================================================
+
+// Tests pour le CRC16
 void test_calculate_crc16_ccitt_standard() {
-    // Vecteur de test standard : la chaîne "123456789" (ASCII)
-    // Le CRC16-CCITT standard (poly=0x1021, init=0xFFFF) pour cette chaîne est 0x29B1
     const uint8_t test_str[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
     uint16_t result = calculate_crc16(test_str, 9);
     TEST_ASSERT_EQUAL_HEX16(0x29B1, result);
@@ -30,28 +48,73 @@ void test_calculate_crc16_ccitt_standard() {
 
 void test_calculate_crc16_zeros() {
     const uint8_t test_zeros[] = {0x00, 0x00, 0x00, 0x00};
-    // Le CRC16-CCITT pour 4 octets à 0x00 est 0x84C0
     uint16_t result = calculate_crc16(test_zeros, 4);
     TEST_ASSERT_EQUAL_HEX16(0x84C0, result);
 }
 
 void test_calculate_crc16_single_byte() {
     const uint8_t test_byte[] = {0xA5};
-    // Le CRC16-CCITT pour un seul octet 0xA5 est 0x5D38
     uint16_t result = calculate_crc16(test_byte, 1);
     TEST_ASSERT_EQUAL_HEX16(0x04BF, result);
 }
 
+// Test pour l'encodage et décodage bitwise de l'identifiant de mission
+void test_mission_id_encoding_decoding() {
+    uint8_t input_type = 2; // BALLOON
+    uint8_t input_num = 99; // SSID_NUM
+    uint8_t input_apid = 15; // APID
+
+    // Encodage (identique à src/serial.cpp)
+    uint16_t ssid = ((input_type & 0x03) << 8) | input_num;
+    uint16_t id_mission = (ssid << 6) | (input_apid & 0x3F);
+
+    // Décodage (identique à docs/app.js)
+    uint16_t decoded_ssid = id_mission >> 6;
+    uint8_t decoded_apid = id_mission & 0x3F;
+    uint8_t decoded_type = (decoded_ssid >> 8) & 0x03;
+    uint8_t decoded_num = decoded_ssid & 0xFF;
+
+    TEST_ASSERT_EQUAL_UINT8(input_type, decoded_type);
+    TEST_ASSERT_EQUAL_UINT8(input_num, decoded_num);
+    TEST_ASSERT_EQUAL_UINT8(input_apid, decoded_apid);
+}
+
+// Test pour la conversion hexadécimale de la payload
+void test_bytes_to_hex_conversion() {
+    const uint8_t test_bytes[] = {0x00, 0x1A, 0xBC, 0xFF, 0x09};
+    char result_str[11];
+    bytes_to_hex_string(test_bytes, 5, result_str);
+    TEST_ASSERT_EQUAL_STRING("001ABCFF09", result_str);
+}
+
+// Test pour la formule de conversion ADC vers tension physique de batterie
+void test_convert_adc_to_voltage() {
+    // 0 ADC -> 0V
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, convert_adc_to_voltage(0));
+    // 2048 ADC -> ~3.466V
+    TEST_ASSERT_FLOAT_WITHIN(0.005f, 3.4655f, convert_adc_to_voltage(2048));
+    // 4095 ADC (Max) -> ~6.930V (USB connecté ou surtension factice)
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 6.930f, convert_adc_to_voltage(4095));
+}
+
 void setup() {
-    // Attendre l'initialisation de la liaison série de test
     delay(2000);
     UNITY_BEGIN();
+    
+    // Suite CRC16
     RUN_TEST(test_calculate_crc16_ccitt_standard);
     RUN_TEST(test_calculate_crc16_zeros);
     RUN_TEST(test_calculate_crc16_single_byte);
+    
+    // Suite Logique binaire & Formats
+    RUN_TEST(test_mission_id_encoding_decoding);
+    RUN_TEST(test_bytes_to_hex_conversion);
+    
+    // Suite Tension & Mathématiques
+    RUN_TEST(test_convert_adc_to_voltage);
+    
     UNITY_END();
 }
 
 void loop() {
-    // Rien à faire ici
 }
