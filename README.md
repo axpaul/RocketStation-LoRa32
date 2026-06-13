@@ -2,6 +2,12 @@
 
 **RocketStation-LoRa32** est une station au sol de réception LoRa destinée à capter la télémétrie de fusées expérimentales et de ballons-sondes. Elle repose sur la carte de développement [LilyGO TTGO T3 V1.6.1 (LoRa32 V2.1.6)](https://lilygo.cc/en-us/products/lora3) équipée d'un microcontrôleur ESP32, d'un module radio SX1276 et d'un écran OLED intégré. Elle fonctionne à la fréquence de 869.525 MHz (868 MHz ou 433 Mhz Bande ICM en fonction de la version).
 
+> [!IMPORTANT]
+> ### 🌐 Nectar Rx Station Web Console (Live)
+> Pilotez et flashez votre station sol directement depuis votre navigateur, sans aucune installation :
+> # 🚀 **[Accéder à la Console Web & Flasheur en Ligne](https://axpaul.github.io/RocketStation-LoRa32/)**
+> *Compatible avec Chrome, Edge et Opera (via l'API Web Serial)*
+
 Le but principal de cette station est d'assurer l'interface de réception physique pour le logiciel de visualisation et de traitement de télémétrie [NectarMC](https://github.com/mlavardin/NectarMC).
 
 <p align="center">
@@ -9,6 +15,21 @@ Le but principal de cette station est d'assurer l'interface de réception physiq
 </p>
 
 Cette version du logiciel est optimisée pour être compatible avec le logiciel [NectarMC](https://github.com/mlavardin/NectarMC) en générant des trames binaires série conformes, en gérant dynamiquement les trackers et en enregistrant l'historique sur carte SD.
+
+---
+
+## 🌐 Fonctionnalités de la Console Web
+
+Une console de contrôle moderne et interactive est disponible en ligne pour interagir directement avec votre récepteur en USB :
+
+👉 **[Ouvrir la Console Web Live](https://axpaul.github.io/RocketStation-LoRa32/)**
+
+Cette interface web statique et moderne vous permet de :
+*   **🔌 Piloter la station par port COM USB** : Connectez votre récepteur LoRa32 en un clic et configurez-le dynamiquement (fréquence, Spreading Factor, Bande Passante) à l'aide de boutons simples ou de la console AT interactive.
+*   **🛸 Suivre les Trackers Actifs en temps réel** : La page liste automatiquement tous les émetteurs détectés (fusées, minifusées, ballons...) avec leurs types de mission, APID, nombre de trames et charges utiles. Elle détecte et marque automatiquement comme `PERDU` les trackers inactifs pendant plus de 15 secondes.
+*   **📈 Tracer le débit de données** : Un graphique SVG en temps réel affiche le flux instantané de données reçues.
+*   **⚡ Flasher le firmware en ligne** : Mettez à jour le micrologiciel de votre carte TTGO avec la version **v1.3.1** native (en 868 ou 433 MHz) directement en un clic depuis le navigateur grâce à `esptool-js`.
+
 
 ---
 
