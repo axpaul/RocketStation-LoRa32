@@ -93,6 +93,49 @@ Les trames émises par la station sol vers le PC sur le port série USB sont lue
 
 ---
 
+## 🎮 Commandes de Configuration AT Interactives (Série / Bluetooth)
+
+La station sol dispose d'un décodeur de commandes AT standard permettant de configurer la radio à chaud (en USB à **115200 bauds** ou sans fil via liaison **Bluetooth Classic (SPP)** avec l'appareil **`Nectar-RxStation-XXXX`**).
+
+Chaque commande doit se terminer par un retour chariot (`\n` ou `\r`). Les réponses sont renvoyées sur le même canal que celui d'où provient la commande.
+
+> [!IMPORTANT]
+> **Sécurité Anti-Conflit :**
+> Toutes les commandes doivent obligatoirement commencer par le préfixe **`AT`**. Tout flux série ou Bluetooth ne débutant pas par ces deux lettres est silencieusement ignoré. Cela évite tout conflit avec des trames de données binaires entrantes ou du bruit sur le port.
+
+### 📋 Liste des commandes AT disponibles
+
+| Commande | Rôle | Format de Réponse & Exemples |
+| :--- | :--- | :--- |
+| **`AT`** | Teste la communication avec la station | `OK` |
+| **`AT+FREQ=<val>`** | Modifie la fréquence LoRa active (en MHz) | Ex: `AT+FREQ=869.525`. Renvoie `OK` ou `ERROR`. |
+| **`AT+FREQ?`** | Interroge la fréquence active | Renvoie `+FREQ: 869.525` suivi de `OK` |
+| **`AT+SF=<val>`** | Modifie le Spreading Factor LoRa | De `6` à `12`. Ex: `AT+SF=8`. Renvoie `OK` ou `ERROR`. |
+| **`AT+SF?`** | Interroge le Spreading Factor actif | Renvoie `+SF: 8` suivi de `OK` |
+| **`AT+BW=<val>`** | Modifie la bande passante LoRa (en kHz) | Valeur $> 0$. Ex: `AT+BW=250.0`. Renvoie `OK` ou `ERROR`. |
+| **`AT+BW?`** | Interroge la bande passante active | Renvoie `+BW: 250.0` suivi de `OK` |
+| **`AT+CFG`** ou **`AT+STATUS`** | Affiche le rapport complet de la configuration | Affiche la version, la bande native, les limites, les réglages actifs, l'état de la SD et du Bluetooth, suivi de `OK`. |
+| **`AT+SAVE`** | Persiste la configuration active dans la Flash (NVS) | Renvoie `OK`. Elle sera rechargée automatiquement au boot. |
+| **`AT+RESET`** | Efface la configuration personnalisée et redémarre | Renvoie `OK`, puis réinitialise la carte aux paramètres d'usine. |
+
+### ⚠️ Retours d'erreurs et statuts
+
+* **Succès général** :
+  * `OK`
+* **Erreur de limites de fréquence (Bandes ISM natives protégées)** :
+  * Si hors de la bande configurée :
+    `ERROR: Out of limits [863.0 - 870.0] MHz`
+* **Erreur de paramètre invalide** :
+  * Si la valeur du paramètre est incorrecte (ex. `AT+SF=13`) :
+    `ERROR: SF must be between 6 and 12`
+  * Si la bande passante demandée est négative ou nulle :
+    `ERROR: Bandwidth must be greater than 0`
+* **Erreur de commande inconnue** :
+  * Si la commande AT est incorrecte ou non supportée :
+    `ERROR: Unknown AT command '<votre_saisie>'`
+
+---
+
 ## 💾 Structure des logs (Carte SD)
 
 Les données sont enregistrées dans un fichier CSV avec la structure suivante :
@@ -100,6 +143,30 @@ Les données sont enregistrées dans un fichier CSV avec la structure suivante :
 
 Exemple de ligne de log :
 `00:05:42,-85.00,8.50,FX99,7,EBC7181401020304`
+
+---
+
+## Architecture Logicielle
+
+Le micrologiciel du récepteur est conçu avec une structure modulaire en C++ afin de séparer les responsabilités (entrées/sorties, affichage, stockage, communication sans fil) et d'assurer une exécution robuste et sans blocage des tâches critiques de réception radio.
+
+```mermaid
+graph TD
+    Main[main.cpp <br/> Orchestrateur] -->|Initialise et cadence| Radio[radio.cpp <br/> Gestion Radio & OLED]
+    Main -->|Charge/Sauvegarde Config| Func[function.cpp <br/> Mémoire NVS, SD & IHM]
+    Radio -->|Achemine les paquets| Serial[serial.cpp <br/> Calcul CRC16 & Format NectarMC]
+    Radio -->|Rafraîchit| OLED[Ecran OLED <br/> Statuts & Écrans de Télémétrie]
+    Main -->|Enregistre les données| SD[function.cpp <br/> Journalisation CSV sur SD]
+    Serial -->|Transmet les trames| Output[USB Série & Bluetooth SerialBT]
+```
+
+### Description des Modules
+
+*   **[main.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/main.cpp) (Orchestrateur)** : Point d'entrée principal. Il initialise les composants système dans `setup()` (port USB, Bluetooth Classic, configuration radio, carte SD) et gère l'exécution des tâches dans `loop()` (lecture périodique des commandes AT entrantes et mise à jour de l'affichage OLED toutes les secondes).
+*   **[radio.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/radio.cpp) (Gestion Radio & OLED)** : Configure le module radio SX1276 (via RadioLib), traite la réception asynchrone des trames LoRa (sécurisée par interruption matérielle via `setFlag()`) et met à jour l'affichage OLED (via U8g2). Il gère également le calcul dynamique des métriques réseau (débit instantané en B/s et liste des émetteurs actifs filtrée par un timeout de 10 secondes).
+*   **[serial.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/serial.cpp) (Sérialisation & Bluetooth Mirror)** : Implémente le calcul de somme de contrôle CRC16-CCITT et encapsule les payloads LoRa décodées dans le format de trame binaire officiel de NectarMC. Il s'occupe de dupliquer la trame finalisée sur le port série USB et sur le flux série Bluetooth Classic (`SerialBT`) lorsqu'un client est connecté.
+*   **[function.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/function.cpp) (Mémoire NVS, SD & Interface Graphique)** : Regroupe les fonctions utilitaires système. Il gère le stockage non-volatile (NVS via `<Preferences.h>`) pour sauvegarder/charger les configurations LoRa à chaud, effectue la détection et les tests de capacité de la carte SD, et écrit les logs au format CSV (`/log_X.csv`). Il pilote également les animations graphiques OLED (animation de démarrage du pylône radio et icônes visuelles d'état d'insertion de carte SD).
+*   **[header.h](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/include/header.h) (Configuration & Pinout)** : Fichier d'en-tête central. Il déclare les variables globales partagées, configure les constantes matérielles (mapping des broches GPIO pour l'écran I2C, le bus SPI de la radio, le bus SPI de la carte SD et le pin ADC de la batterie), et définit les structures de configuration (`LoRaConfig`) ainsi que les limites de fréquence ISM physiques autorisées par environnement de compilation.
 
 ---
 
@@ -115,6 +182,12 @@ En ligne de commande :
 ```powershell
 pio run -t upload
 ```
+
+---
+
+## 🚀 Évolutions Futures (Roadmap)
+
+*   **Compatibilité BLE (Bluetooth Low Energy)** : Remplacement ou double support du Bluetooth Classic par le BLE pour réduire considérablement la consommation d'énergie de la station sol, et assurer une compatibilité native et immédiate avec les appareils iOS (iPhones/iPads).
 
 ---
 
