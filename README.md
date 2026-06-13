@@ -74,27 +74,30 @@ Pour que la station puisse router dynamiquement les trames vers le logiciel [Nec
 
 ## 💻 Format de trame série NectarMC (Sortie USB / Bluetooth)
 
-Les trames émises par la station sol vers le PC sur le port série USB et la liaison Bluetooth sont lues par le logiciel [NectarMC](https://github.com/mlavardin/NectarMC) pour affichage et traitement. Elles ont la structure binaire suivante (taille totale : $7 + N$ octets) :
+Les trames émises par la station sol vers le PC sur le port série USB et la liaison Bluetooth sont lues par le logiciel pour affichage et traitement. Elles ont la structure binaire suivante (taille totale : $13 + N$ octets) :
 
 ```
-┌───────────────────────────────────────────┬───────────────────────────────┬─────────────────┐
-│                 HEADER                    │            PAYLOAD            │ PACKET CONTROL  │
-├───────────────────────────────────────────┼───────────────────────────────┼─────────────────┤
-│   MAGIC     │  Id_mission  │ payload_size │   N-2 data    │ RSSI  │  SNR  │     CRC16       │
-│   1 Byte    │   2 Bytes    │   1 Byte     │   bytes       │1 Byte │1 Byte │    2 Bytes      │
-│    0xEB     │ (Little-End) │   (N bytes)  │               │(int8_t│(int8_t│  (Little-End)   │
-└─────────────┴──────────────┴──────────────┴───────────────┴───────┴───────┴─────────────────┘
+┌───────────────────────────────────────────┬───────────────────┬───────────────────────────────────────┬───────────────┐
+│                 HEADER                    │      PAYLOAD      │               METADATA                │     CONTROL   │
+├───────────────────────────────────────────┼───────────────────┼───────────────────────────────────────┼───────────────┤
+│   MAGIC     │  Id_mission  │ payload_size │      N data       │  RSSI   │   SNR   │     Timestamp     │     CRC16     │
+│   1 Byte    │   2 Bytes    │   1 Byte     │      bytes        │ 1 Byte  │ 1 Byte  │      4 Bytes      │    2 Bytes    │
+│    0xEB     │ (Little-End) │   (N bytes)  │                   │(int8_t) │(int8_t) │ (uint32_t Little-E)│ (Little-End)  │
+└─────────────┴──────────────┴──────────────┴───────────────────┴─────────┴─────────┴───────────────────┴───────────────┘
 ```
 
 *   **MAGIC** : `0xEB` (Marqueur de synchronisation).
 *   **Id_mission** : Fusion du SSID (TYPE sur bits 15-14, NUM sur bits 13-6) et de l'APID (bits 5-0) sur 16 bits.
-*   **payload_size** : Nombre d'octets $N$ de la charge utile (données utiles LoRa + 2 octets pour le RSSI et le SNR).
-*   **PAYLOAD** : Contient les $N-2$ octets de données du tracker, suivis directement du **RSSI** (1 octet, entier signé `int8_t`) et du **SNR** (1 octet, entier signé `int8_t`).
-*   **CRC16** : Calculé sur l'ensemble **Header + Payload** (contenant le RSSI et le SNR) permettant de protéger l'intégralité du signal série y compris les métriques radio (polynôme CCITT 0x1021, init 0xFFFF).
+*   **payload_size** : Nombre d'octets $N$ de la charge utile LoRa brute reçue de la fusée.
+*   **PAYLOAD** : Les $N$ octets de données utiles brutes reçues de la fusée.
+*   **RSSI** : 1 octet (entier signé `int8_t` en dBm) exprimant le niveau du signal reçu.
+*   **SNR** : 1 octet (entier signé `int8_t` codant la valeur du SNR multipliée par 4) offrant une résolution de 0.25 dB (plage de -32 dB à +31.75 dB).
+*   **Timestamp** : 4 octets (`uint32_t` Little-Endian, epoch Unix absolu en secondes) représentant l'heure exacte de réception.
+*   **CRC16** : Calculé sur l'ensemble **Header + Payload + RSSI + SNR + Timestamp** (soit $10 + N$ octets) avec le polynôme standard CCITT 0x1021, valeur initiale 0xFFFF.
 
 > [!TIP]
-> **Compatibilité NectarMC préservée :**
-> L'ajout du **RSSI** et du **SNR** s'effectue à la fin de la payload série. Le logiciel officiel **NectarMC** (qui valide et décode la trame en vérifiant la taille $N$ et en calculant le CRC16 sur l'ensemble) reste **100% compatible**, tout en permettant à la console web d'extraire ces valeurs physiques en temps réel. Le payload brut LoRa maximal est limité à 253 octets pour préserver la limite de 255 octets de la charge utile.
+> **Gestion intelligente du temps :**
+> L'ajout du **Timestamp** permet de dater précisément chaque trame sans dépendre de l'horloge système du PC au moment du traitement. Si la station sol n'a pas encore été synchronisée (ex. fonctionnement autonome), l'horloge RTC démarre par défaut à l'époque 0 (`1er janvier 1970`). L'application Web Ground Station synchronise automatiquement la RTC de la station à la connexion en lui transmettant l'époque Unix courante de l'ordinateur.
 
 ---
 
@@ -119,6 +122,11 @@ Chaque commande doit se terminer par un retour chariot (`\n` ou `\r`). Les répo
 | **`AT+SF?`** | Interroge le Spreading Factor actif | Renvoie `+SF: 8` suivi de `OK` |
 | **`AT+BW=<val>`** | Modifie la bande passante LoRa (en kHz) | Valeur $> 0$. Ex: `AT+BW=250.0`. Renvoie `OK` ou `ERROR`. |
 | **`AT+BW?`** | Interroge la bande passante active | Renvoie `+BW: 250.0` suivi de `OK` |
+| **`AT+TIME=<epoch>`** | Configure l'heure RTC de la station (Epoch Unix en secondes) | Ex: `AT+TIME=1781290382`. Renvoie `OK`. |
+| **`AT+TIME?`** | Interroge l'horloge RTC de la station (Epoch Unix en secondes) | Renvoie `+TIME: 1781290382` suivi de `OK`. |
+| **`AT+RSSI?`** | Interroge le RSSI du dernier paquet reçu (en dBm) | Renvoie `+RSSI: -85.0` suivi de `OK`. |
+| **`AT+SNR?`** | Interroge le SNR du dernier paquet reçu (en dB) | Renvoie `+SNR: 9.5` suivi de `OK`. |
+| **`AT+SIG?`** | Interroge à la fois le RSSI et le SNR du dernier paquet reçu | Renvoie `+SIG: RSSI=-85.0, SNR=9.5` suivi de `OK`. |
 | **`AT+CFG`** ou **`AT+STATUS`** | Affiche le rapport complet de la configuration | Affiche la version, la bande native, les limites, les réglages actifs, l'état de la SD et du Bluetooth, suivi de `OK`. |
 | **`AT+SAVE`** | Persiste la configuration active dans la Flash (NVS) | Renvoie `OK`. Elle sera rechargée automatiquement au boot. |
 | **`AT+RESET`** | Efface la configuration personnalisée et redémarre | Renvoie `OK`, puis réinitialise la carte aux paramètres d'usine. |

@@ -29,6 +29,11 @@ let currentConfig = {
 let currentPortName = '';
 let currentLang = 'fr';
 
+// Historique pour les graphiques RSSI/SNR
+const maxChartPoints = 30;
+const rssiHistory = []; // { value, time }
+const snrHistory = [];  // { value, time }
+
 // Dictionnaire de traduction
 const i18n = {
   fr: {
@@ -55,6 +60,8 @@ const i18n = {
     stats_title: "📊 Qualité de Liaison",
     stats_rssi: "RSSI (dBm)",
     stats_snr: "SNR (dB)",
+    chart_rssi_title: "Tendance RSSI",
+    chart_snr_title: "Tendance SNR",
     stats_count: "Trames Reçues",
     flash_title: "⚡ Mise à Jour Firmware",
     flash_desc: "Flashez directement la version <strong>v1.3.1</strong> depuis votre navigateur par port USB.",
@@ -152,6 +159,8 @@ const i18n = {
     stats_title: "📊 Link Quality",
     stats_rssi: "RSSI (dBm)",
     stats_snr: "SNR (dB)",
+    chart_rssi_title: "RSSI Trend",
+    chart_snr_title: "SNR Trend",
     stats_count: "Received Frames",
     flash_title: "⚡ Firmware Update",
     flash_desc: "Flash version <strong>v1.3.1</strong> directly from your browser via USB port.",
@@ -423,8 +432,10 @@ async function connectSerial() {
       // Démarrer la boucle de lecture
       readLoopPromise = readSerialLoop();
 
-      // Envoyer une demande de configuration initiale après le boot de la carte (6s) de manière séquentielle (évite les verrous)
+      // Envoyer la synchronisation temporelle et la demande de configuration initiale après le boot de la carte (6s) de manière séquentielle (évite les verrous)
       setTimeout(async () => {
+        const currentEpoch = Math.floor(Date.now() / 1000);
+        await sendSerialText(`AT+TIME=${currentEpoch}`);
         await sendSerialText('AT+FREQ?');
         await sendSerialText('AT+SF?');
         await sendSerialText('AT+BW?');
@@ -539,8 +550,8 @@ function parseRxBuffer() {
         break;
       }
       
-      const payloadSize = rxBuffer[3];
-      const totalFrameSize = 4 + payloadSize + 2 + 1; // Header (4) + Payload (données + RSSI + SNR) + CRC (2) + \n (1)
+      const payloadSize = rxBuffer[3]; // Taille brute des données de la payload LoRa
+      const totalFrameSize = 4 + payloadSize + 2 + 4 + 2 + 1; // Header (4) + Payload (payloadSize) + RSSI (1) + SNR (1) + Timestamp (4) + CRC (2) + \n (1)
       
       if (rxBuffer.length < totalFrameSize) {
         processing = false; // La trame n'est pas encore complète
@@ -643,15 +654,26 @@ function decodeNectarFrame(frame) {
   const ssidType = (ssid >> 8) & 0x03;
   const ssidNum = ssid & 0xFF;
   
-  const payloadSize = frame[3]; // Taille totale de la payload (données LoRa + RSSI + SNR)
-  const payload = frame.slice(4, 4 + payloadSize - 2); // Les données utiles LoRa réelles
-  const crc = (frame[4 + payloadSize + 1] << 8) | frame[4 + payloadSize];
+  const payloadSize = frame[3]; // Taille brute de la payload LoRa
+  const payload = frame.slice(4, 4 + payloadSize); // Les données utiles LoRa brutes
   
-  // RSSI et SNR sont à la fin de la payload
-  const rawRssi = frame[4 + payloadSize - 2];
-  const rawSnr = frame[4 + payloadSize - 1];
+  // RSSI et SNR sont après la payload (de taille payloadSize)
+  const rawRssi = frame[4 + payloadSize];
+  const rawSnr = frame[4 + payloadSize + 1];
   const rssi = rawRssi >= 128 ? rawRssi - 256 : rawRssi;
-  const snr = rawSnr >= 128 ? rawSnr - 256 : rawSnr;
+  
+  // Le SNR est multiplié par 4 à l'envoi pour coder au 0.25 dB de précision
+  const signedSnr = rawSnr >= 128 ? rawSnr - 256 : rawSnr;
+  const snr = signedSnr / 4.0;
+  
+  // Le Timestamp (Unix Epoch) est après le SNR (4 octets, uint32_t Little-Endian)
+  const tsOffset = 4 + payloadSize + 2;
+  const epoch = (frame[tsOffset + 3] << 24 >>> 0) +
+                (frame[tsOffset + 2] << 16) +
+                (frame[tsOffset + 1] << 8) +
+                frame[tsOffset];
+  
+  const crc = (frame[4 + payloadSize + 7] << 8) | frame[4 + payloadSize + 6];
   
   let ssidPrefix = 'OTHER';
   let missionTypeLabelKey = 'mission_other';
@@ -667,7 +689,15 @@ function decodeNectarFrame(frame) {
   }
   
   const trackerName = `${ssidPrefix}${ssidNum}`;
-  const timestamp = new Date().toLocaleTimeString();
+  
+  // Formater l'horodatage à partir de l'Epoch reçu de l'ESP32
+  let timestamp;
+  if (epoch > 100000000) {
+    timestamp = new Date(epoch * 1000).toLocaleTimeString();
+  } else {
+    // Fallback à l'heure du navigateur si la RTC n'a pas été initialisée (Epoch 0 ou valeur invalide)
+    timestamp = new Date().toLocaleTimeString();
+  }
   
   // Ajouter à l'historique complet (capé à 5000 trames) avec la taille brute LoRa
   allReceivedFrames.push({
@@ -675,7 +705,7 @@ function decodeNectarFrame(frame) {
     timestamp: timestamp,
     tracker: trackerName,
     apid: apid,
-    size: payloadSize - 2, // Taille réelle des données utiles LoRa
+    size: payloadSize, // Taille réelle des données utiles LoRa
     payload: bytesToHex(payload),
     rssi: rssi,
     snr: snr
@@ -683,6 +713,15 @@ function decodeNectarFrame(frame) {
   if (allReceivedFrames.length > 5000) {
     allReceivedFrames.shift();
   }
+  
+  // Ajouter aux graphiques de signal en direct
+  rssiHistory.push({ value: rssi, time: timestamp });
+  if (rssiHistory.length > maxChartPoints) rssiHistory.shift();
+  
+  snrHistory.push({ value: snr, time: timestamp });
+  if (snrHistory.length > maxChartPoints) snrHistory.shift();
+  
+  drawSignalCharts();
   
   renderTelemetryTable();
 
@@ -849,38 +888,67 @@ function updateThroughputChart() {
     bytesCountThisSecond = 0;
     lastThroughputCalculation = now;
     
-    // Décaler l'historique
-    throughputHistory.shift();
-    throughputHistory.push(dataRate);
-    
     // Mettre à jour l'indicateur de débit
     if (lblThroughput) {
       lblThroughput.textContent = `${dataRate} B/s`;
     }
-    
-    // Redessiner le graphique SVG
-    drawSvgChart();
     
     // Vérifier les timeouts des trackers
     checkTrackersTimeout();
   }
 }
 
-function drawSvgChart() {
-  const chartLine = document.getElementById('chart-line');
-  const chartFill = document.getElementById('chart-fill');
+function drawSignalCharts() {
+  drawSingleChart('rssi-chart-line', 'rssi-chart-fill', rssiHistory, -120, 0);
+  drawSingleChart('snr-chart-line', 'snr-chart-fill', snrHistory, -20, 20);
+  
+  // Mettre à jour les indicateurs de temps
+  const lblRssiTime = document.getElementById('chart-rssi-time');
+  if (lblRssiTime) {
+    if (rssiHistory.length > 0) {
+      lblRssiTime.textContent = rssiHistory.length === 1 
+        ? rssiHistory[0].time 
+        : `${rssiHistory[0].time} ➔ ${rssiHistory[rssiHistory.length - 1].time}`;
+    } else {
+      lblRssiTime.textContent = '--:--:--';
+    }
+  }
+
+  const lblSnrTime = document.getElementById('chart-snr-time');
+  if (lblSnrTime) {
+    if (snrHistory.length > 0) {
+      lblSnrTime.textContent = snrHistory.length === 1 
+        ? snrHistory[0].time 
+        : `${snrHistory[0].time} ➔ ${snrHistory[snrHistory.length - 1].time}`;
+    } else {
+      lblSnrTime.textContent = '--:--:--';
+    }
+  }
+}
+
+function drawSingleChart(lineId, fillId, history, minVal, maxVal) {
+  const chartLine = document.getElementById(lineId);
+  const chartFill = document.getElementById(fillId);
   if (!chartLine || !chartFill) return;
   
   const width = 300;
   const height = 100;
-  const maxVal = Math.max(...throughputHistory, 50); // Echelle auto avec minimum à 50 B/s
-  const pointsCount = throughputHistory.length;
+  const pointsCount = history.length;
+  
+  if (pointsCount === 0) {
+    chartLine.setAttribute('d', '');
+    chartFill.setAttribute('d', 'M 0 100 L 300 100 Z');
+    return;
+  }
   
   let dLine = '';
   
   for (let i = 0; i < pointsCount; i++) {
-    const x = (i / (pointsCount - 1)) * width;
-    const y = height - (throughputHistory[i] / maxVal) * (height - 10) - 5;
+    const x = (i / (maxChartPoints - 1)) * width;
+    
+    const val = history[i].value;
+    const clampedVal = Math.max(minVal, Math.min(maxVal, val));
+    const y = height - ((clampedVal - minVal) / (maxVal - minVal)) * (height - 10) - 5;
     
     if (i === 0) {
       dLine += `M ${x} ${y}`;
@@ -889,7 +957,9 @@ function drawSvgChart() {
     }
   }
   
-  const dFill = `${dLine} L ${width} ${height} L 0 ${height} Z`;
+  const firstX = 0;
+  const lastX = ((pointsCount - 1) / (maxChartPoints - 1)) * width;
+  const dFill = `${dLine} L ${lastX} ${height} L ${firstX} ${height} Z`;
   
   chartLine.setAttribute('d', dLine);
   chartFill.setAttribute('d', dFill);
@@ -903,6 +973,8 @@ setInterval(updateThroughputChart, 1000);
 // ============================================================================
 if (btnReadCfg) {
   btnReadCfg.addEventListener('click', async () => {
+    const currentEpoch = Math.floor(Date.now() / 1000);
+    await sendSerialText(`AT+TIME=${currentEpoch}`);
     await sendSerialText('AT+FREQ?');
     await sendSerialText('AT+SF?');
     await sendSerialText('AT+BW?');
@@ -1106,6 +1178,9 @@ if (btnClearTelemetry) {
         tableTelemetryBody.appendChild(rowEmpty);
       }
     }
+    rssiHistory.length = 0;
+    snrHistory.length = 0;
+    drawSignalCharts();
   });
 }
 

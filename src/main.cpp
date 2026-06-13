@@ -115,9 +115,10 @@ void loop() {
       const uint8_t* payload = &byteArr[3];
       size_t payload_len     = receivedLen - 3;
       
-      // Extraction des métriques de la liaison radio
-      int8_t rssi_val = (int8_t)radio.getRSSI();
-      int8_t snr_val  = (int8_t)radio.getSNR();
+      // Extraction des métriques de la liaison radio sauvegardées lors de la réception
+      int8_t rssi_val = (int8_t)dispRssi;
+      // Multiplication par 4 pour conserver une résolution de 0.25 dB
+      int8_t snr_val  = (int8_t)(dispSnr * 4.0f);
       
       // Transmission de la trame binaire NectarMC (USB et Bluetooth)
       sendNectarFrame(ssid_type, ssid_num, apid, payload, payload_len, rssi_val, snr_val);
@@ -133,7 +134,7 @@ void loop() {
         char ssid_str[32];
         snprintf(ssid_str, sizeof(ssid_str), "%s%d", ssid_prefix, ssid_num);
 
-        writeFrameToFile(logFileName, byteArr, receivedLen, radio.getRSSI(), radio.getSNR(), ssid_str, apid);  
+        writeFrameToFile(logFileName, byteArr, receivedLen, dispRssi, dispSnr, ssid_str, apid);  
       }
     }
   }
@@ -234,6 +235,34 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
     }
   } else if (strcmp(cmd, "AT+FREQ?") == 0) {
     responseStream.printf("+FREQ: %.3f\n", activeConfig.frequency);
+    responseStream.println("OK");
+  }
+
+  // AT+TIME=<epoch> ou AT+TIME?
+  else if (strncmp(cmd, "AT+TIME=", 8) == 0) {
+    uint32_t epoch = strtoul(cmd + 8, NULL, 10);
+    rtc.setTime(epoch);
+    responseStream.println("OK");
+  } else if (strcmp(cmd, "AT+TIME?") == 0) {
+    responseStream.printf("+TIME: %lu\n", rtc.getEpoch());
+    responseStream.println("OK");
+  }
+
+  // AT+RSSI?
+  else if (strcmp(cmd, "AT+RSSI?") == 0) {
+    responseStream.printf("+RSSI: %.1f\n", dispRssi);
+    responseStream.println("OK");
+  }
+
+  // AT+SNR?
+  else if (strcmp(cmd, "AT+SNR?") == 0) {
+    responseStream.printf("+SNR: %.1f\n", dispSnr);
+    responseStream.println("OK");
+  }
+
+  // AT+SIG?
+  else if (strcmp(cmd, "AT+SIG?") == 0) {
+    responseStream.printf("+SIG: RSSI=%.1f, SNR=%.1f\n", dispRssi, dispSnr);
     responseStream.println("OK");
   }
 

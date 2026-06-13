@@ -57,7 +57,7 @@ void IRAM_ATTR setFlag(void) {
  */
 void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio) {
   Serial.println("[SX1276] Initializing ...");
-  rtc.setTime(0, 0, 0, 0, 0, 2023); // Date par défaut
+  rtc.setTime(0); // Démarrage à l'Epoch 0 (1er janvier 1970)
  
   int state = radio->begin(activeConfig.frequency);
 

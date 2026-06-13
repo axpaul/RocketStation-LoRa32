@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nectar Rx Station - Web Control Panel</title>
-  <link rel="stylesheet" href="style.css?v=1.3.8-lang-translation">
+  <link rel="stylesheet" href="style.css?v=1.4.0-timestamp">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -135,17 +135,42 @@
           </div>
         </div>
         
-        <div class="chart-container">
-          <svg id="rssi-chart" viewBox="0 0 300 100" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="chart-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="var(--color-cyan)" stop-opacity="0.3"></stop>
-                <stop offset="100%" stop-color="var(--color-cyan)" stop-opacity="0"></stop>
-              </linearGradient>
-            </defs>
-            <path id="chart-fill" d="M 0 100 L 300 100 Z" fill="url(#chart-grad)"></path>
-            <path id="chart-line" d="" fill="none" stroke="var(--color-cyan)" stroke-width="2" stroke-linecap="round"></path>
-          </svg>
+        <div class="chart-wrapper">
+          <div class="chart-title">
+            <span data-i18n="chart_rssi_title">Tendance RSSI</span>
+            <span id="chart-rssi-time" class="chart-time-label">--:--:--</span>
+          </div>
+          <div class="chart-container">
+            <svg viewBox="0 0 300 100" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="rssi-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--color-cyan)" stop-opacity="0.3"></stop>
+                  <stop offset="100%" stop-color="var(--color-cyan)" stop-opacity="0"></stop>
+                </linearGradient>
+              </defs>
+              <path id="rssi-chart-fill" d="M 0 100 L 300 100 Z" fill="url(#rssi-grad)"></path>
+              <path id="rssi-chart-line" d="" fill="none" stroke="var(--color-cyan)" stroke-width="2" stroke-linecap="round"></path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="chart-wrapper">
+          <div class="chart-title">
+            <span data-i18n="chart_snr_title">Tendance SNR</span>
+            <span id="chart-snr-time" class="chart-time-label">--:--:--</span>
+          </div>
+          <div class="chart-container">
+            <svg viewBox="0 0 300 100" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="snr-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--color-accent)" stop-opacity="0.3"></stop>
+                  <stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0"></stop>
+                </linearGradient>
+              </defs>
+              <path id="snr-chart-fill" d="M 0 100 L 300 100 Z" fill="url(#snr-grad)"></path>
+              <path id="snr-chart-line" d="" fill="none" stroke="var(--color-accent)" stroke-width="2" stroke-linecap="round"></path>
+            </svg>
+          </div>
         </div>
       </div>
     </section>
@@ -256,6 +281,6 @@
     <p>&copy; 2026 Nectar Project - <span data-i18n="footer_credit">Conçu et développé par</span> <a href="https://github.com/axpaul" target="_blank" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">Paul Miailhe (axpaul)</a></p>
   </footer>
 
-  <script type="module" src="app.js?v=1.3.8-lang-translation"></script>
+  <script type="module" src="app.js?v=1.4.0-timestamp"></script>
 </body>
 </html>

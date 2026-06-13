@@ -11,7 +11,7 @@
 #ifndef HEADER_H
 #define HEADER_H
 
-#define FW_VERSION "1.3.1"
+#define FW_VERSION "1.4.0"
 
 #include <Arduino.h>
 #include <SPI.h>
@@ -103,6 +103,8 @@ extern ESP32Time rtc;
 extern char logFileName[32];
 extern char dispStatus[32];
 extern bool *SDCard;
+extern float dispRssi;
+extern float dispSnr;
 
 // ============================================================================
 // Prototypes de fonctions

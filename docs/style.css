@@ -450,15 +450,27 @@ input:disabled, select:disabled {
   overflow: hidden;
 }
 
-.chart-container::before {
-  content: 'TELEM DATA RATE';
-  position: absolute;
-  top: 4px;
-  left: 6px;
-  font-size: 0.55rem;
-  color: var(--text-secondary);
+.chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.chart-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 1px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chart-time-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--color-cyan);
 }
 
 svg#rssi-chart {
