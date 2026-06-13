@@ -109,8 +109,8 @@ Pour garantir qu'aucune donnée n'est perdue ou corrompue pendant son voyage de 
 
 ```mermaid
 graph LR
-    Tracker[🚀 Tracker / Fusée] -- "1. Liaison Radio LoRa<br>(Matériel ou Logiciel)" --> Station[📡 Station Sol LoRa32]
-    Station -- "2. Liaison Série / Bluetooth<br>(Logiciel ESP32)" --> PC[💻 PC (NectarMC / Dashboard)]
+    Tracker["🚀 Tracker / Fusée"] -- "1. Liaison Radio LoRa<br>(Matériel ou Logiciel)" --> Station["📡 Station Sol LoRa32"]
+    Station -- "2. Liaison Série / Bluetooth<br>(Logiciel ESP32)" --> PC["💻 PC (NectarMC / Dashboard)"]
 ```
 
 ### 🔍 Niveau 1 : La Liaison Radio LoRa (Tracker ➔ Station Sol)
