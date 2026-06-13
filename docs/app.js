@@ -147,7 +147,9 @@ async function connectSerial() {
 
       // Envoyer une demande de configuration initiale
       setTimeout(() => {
-        sendSerialText('AT+CFG');
+        sendSerialText('AT+FREQ?');
+        sendSerialText('AT+SF?');
+        sendSerialText('AT+BW?');
       }, 500);
 
     } catch (err) {
@@ -432,7 +434,9 @@ setInterval(updateThroughputChart, 1000);
 // Événements des boutons de Configuration
 // ============================================================================
 btnReadCfg.addEventListener('click', () => {
-  sendSerialText('AT+CFG');
+  sendSerialText('AT+FREQ?');
+  sendSerialText('AT+SF?');
+  sendSerialText('AT+BW?');
 });
 
 btnWriteCfg.addEventListener('click', () => {
@@ -498,7 +502,10 @@ async function flashFirmware() {
   };
 
   try {
-    const selectedPort = await navigator.serial.requestPort();
+    let selectedPort = port;
+    if (!selectedPort) {
+      selectedPort = await navigator.serial.requestPort();
+    }
     transport = new Transport(selectedPort, true);
     
     esploader = new ESPLoader({
@@ -527,9 +534,6 @@ async function flashFirmware() {
     const fileArray = [
       { data: firmwareData, address: 0x10000 }
     ];
-    
-    // Changer la vitesse de flash à chaud pour accélérer le transfert
-    await esploader.runBaud(921600);
     
     await esploader.writeFlash({
       fileArray: fileArray,
