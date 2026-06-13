@@ -103,47 +103,14 @@ Si le CRC matériel de la puce LoRa n'est pas utilisé, l'émetteur doit calcule
 
 ---
 
-## Comprendre les 2 Niveaux de Contrôle d'Intégrité (CRC)
+## Contrôle d'Intégrité (CRC) et de Liaison
 
-Pour garantir qu'aucune donnée n'est perdue ou corrompue pendant son voyage de la fusée jusqu'à l'écran de votre ordinateur, la station sol utilise **deux niveaux de contrôle d'intégrité (CRC)** distincts. C'est un point essentiel pour comprendre comment fonctionne la liaison :
+Pour garantir la fiabilité de la transmission des données de la fusée jusqu'à votre écran, deux niveaux de contrôle d'intégrité (CRC) sont appliqués :
+1. **Liaison Radio LoRa (Tracker ➔ Station Sol)** : CRC matériel géré directement par le silicium de la puce radio SX1276 (Option A, par défaut), ou CRC logiciel inséré dans la payload LoRa si le mode matériel est désactivé (Option B).
+2. **Liaison Série & Bluetooth (Station Sol ➔ PC)** : CRC logiciel calculé par l'ESP32 et vérifié à la réception par le PC (NectarMC ou Dashboard Web).
 
-```mermaid
-graph LR
-    Tracker["🚀 Tracker / Fusée"] -- "1. Liaison Radio LoRa<br>(Matériel ou Logiciel)" --> Station["📡 Station Sol LoRa32"]
-    Station -- "2. Liaison Série / Bluetooth<br>(Logiciel ESP32)" --> PC["💻 PC (NectarMC / Dashboard)"]
-```
-
-### 🔍 Niveau 1 : La Liaison Radio LoRa (Tracker ➔ Station Sol)
-
-Ce contrôle vérifie que les paquets LoRa ne sont pas perturbés par les interférences et la distance dans les airs. Vous avez deux options pour configurer la station :
-
-#### Option A : Le CRC Matériel (Recommandé & Par défaut)
-*   **Qui s'en occupe ?** Le calcul et la vérification sont entièrement **réalisés en silicium par la puce radio Semtech SX1276**, libérant totalement le processeur de vos cartes.
-    * La bibliothèque RadioLib sert d'interface logicielle : sa fonction `radio->setCRC(bool enable, bool mode = false)` configure directement le registre interne `RegModemConfig1` (bit `RxPayloadCrcOn`) du module.
-*   **Comment ça marche ?**
-    * **À l'émission (TX)** : La puce radio calcule automatiquement une signature CRC16 (polynôme standard CCITT `X^16 + X^12 + X^5 + 1`) sur les données et l'ajoute physiquement à la fin du paquet envoyé dans les airs.
-    * **À la réception (RX)** : La puce radio de la station sol intercepte le paquet, recalcule la signature et la compare à celle reçue.
-        * *Si tout est OK* : L'interruption matérielle `DIO0` est déclenchée, l'ESP32 lit le paquet valide dans la mémoire de la puce et le traite.
-        * *Si une erreur est détectée* : La puce radio lève un flag d'erreur matériel (`PayloadCrcError`). La bibliothèque RadioLib intercepte ce flag, rejette le paquet corrompu et renvoie l'erreur `RADIOLIB_ERR_CRC_MISMATCH`. L'ESP32 rejette alors la trame silencieusement sans jamais l'envoyer au PC ou l'enregistrer sur carte SD.
-*   **Commandes AT** : Activable à chaud via `AT+CRC=1` (vous pouvez spécifier le mode CCITT ou IBM en faisant `AT+CRC=1,0` ou `AT+CRC=1,1`) et désactivable via `AT+CRC=0`.
-
-#### Option B : Le CRC Logiciel (Si le CRC matériel est désactivé)
-*   **Qui s'en occupe ?** Le **code de votre tracker** (émetteur) et votre **décodeur final sur le PC**.
-*   **Comment ça marche ?** Si vous désactivez le CRC matériel (`AT+CRC=0`), la puce radio accepte n'importe quelle onde reçue sans rien contrôler. Pour vous assurer que les données ne sont pas corrompues, votre émetteur doit calculer lui-même une signature CRC16 dans son programme informatique et l'écrire manuellement à la fin de son paquet (les 2 octets après le payload de données).
-*   **Quel est l'intérêt ?** Le CRC matériel rejette impitoyablement les paquets dès qu'un seul bit est faux. Désactiver le CRC matériel permet à l'ESP32 de récupérer des paquets partiellement corrompus en vol et de laisser le décodeur sur le PC tenter de les corriger ou d'en extraire des informations partielles.
-
----
-
-### 🔍 Niveau 2 : La Liaison Série & Bluetooth (Station Sol ➔ PC)
-
-Une fois que la station sol a réceptionné un paquet radio LoRa valide, elle doit le retransmettre à votre ordinateur via le câble USB ou sans fil en Bluetooth. Pour s'assurer que ce transfert local ne subit aucun parasite, l'ESP32 applique un **CRC Logiciel** :
-
-*   **Qui s'en occupe ?** Le **processeur de l'ESP32** (côté station sol) et le **logiciel de visualisation** (côté PC, comme NectarMC ou le Dashboard Web).
-*   **Comment ça marche ?**
-    1. Dans le fichier [serial.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/serial.cpp), l'ESP32 prépare la trame série finale contenant les données LoRa et les métadonnées (RSSI, SNR, Timestamp).
-    2. Le processeur calcule logiciellement un **CRC16-CCITT** sur toute la trame.
-    3. L'ESP32 envoie la trame sur le port USB/Bluetooth en y accolant les 2 octets du CRC calculé.
-    4. À la réception, le Dashboard ou le logiciel NectarMC recalcule ce même CRC. Si un parasite a perturbé le câble ou le Bluetooth, le CRC sera différent et la trame sera ignorée, évitant ainsi d'afficher des données aberrantes à l'écran.
+Pour une explication détaillée de ces deux niveaux de sécurité et un guide pas-à-pas idéal pour les débutants :
+👉 **[Consulter le Guide complet sur les CRC](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/CRC_GUIDE.md)**
 
 ---
 
