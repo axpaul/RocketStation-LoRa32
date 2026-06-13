@@ -34,7 +34,7 @@ const selectBaudrate = document.getElementById('baudrate');
 // Inputs Configuration
 const inputFreq = document.getElementById('input-freq');
 const selectSf = document.getElementById('select-sf');
-const inputBw = document.getElementById('input-bw');
+const selectBw = document.getElementById('select-bw');
 
 // Boutons Configuration
 const btnReadCfg = document.getElementById('btn-read-cfg');
@@ -89,7 +89,7 @@ function updateConnectionUI(connected, name = '') {
     // Activer les contrôles
     inputFreq.disabled = false;
     selectSf.disabled = false;
-    inputBw.disabled = false;
+    selectBw.disabled = false;
     btnReadCfg.disabled = false;
     btnWriteCfg.disabled = false;
     btnSaveCfg.disabled = false;
@@ -107,7 +107,7 @@ function updateConnectionUI(connected, name = '') {
     // Désactiver les contrôles
     inputFreq.disabled = true;
     selectSf.disabled = true;
-    inputBw.disabled = true;
+    selectBw.disabled = true;
     btnReadCfg.disabled = true;
     btnWriteCfg.disabled = true;
     btnSaveCfg.disabled = true;
@@ -162,16 +162,24 @@ async function connectSerial() {
 }
 
 async function disconnectSerial() {
+  if (!isConnected) return;
+  isConnected = false;
+
   if (reader) {
     try {
       await reader.cancel();
     } catch (err) {}
   }
   
+  // Attendre un court instant pour libérer le verrou du lecteur
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
   if (port) {
     try {
       await port.close();
-    } catch (err) {}
+    } catch (err) {
+      console.error("Erreur de fermeture du port:", err);
+    }
     port = null;
   }
 
@@ -364,7 +372,7 @@ function parseATResponse(line) {
   else if (line.startsWith('+BW:')) {
     const val = parseFloat(line.split(':')[1]);
     currentConfig.bw = val;
-    inputBw.value = val.toFixed(1);
+    selectBw.value = val.toString();
   }
 }
 
@@ -442,7 +450,7 @@ btnReadCfg.addEventListener('click', () => {
 btnWriteCfg.addEventListener('click', () => {
   const freq = parseFloat(inputFreq.value);
   const sf = parseInt(selectSf.value, 10);
-  const bw = parseFloat(inputBw.value);
+  const bw = parseFloat(selectBw.value);
   
   if (!isNaN(freq)) sendSerialText(`AT+FREQ=${freq.toFixed(3)}`);
   if (!isNaN(sf)) sendSerialText(`AT+SF=${sf}`);

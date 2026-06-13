@@ -77,11 +77,19 @@
         </div>
 
         <div class="form-group">
-          <label for="input-bw">Bande Passante (BW) :</label>
-          <div class="input-with-unit">
-            <input type="number" id="input-bw" min="7.8" max="500.0" step="0.1" placeholder="Ex: 250.0" disabled>
-            <span class="unit">kHz</span>
-          </div>
+          <label for="select-bw">Bande Passante (BW) :</label>
+          <select id="select-bw" disabled>
+            <option value="7.8">7.8 kHz</option>
+            <option value="10.4">10.4 kHz</option>
+            <option value="15.6">15.6 kHz</option>
+            <option value="20.8">20.8 kHz</option>
+            <option value="31.25">31.25 kHz</option>
+            <option value="41.7">41.7 kHz</option>
+            <option value="62.5">62.5 kHz</option>
+            <option value="125">125.0 kHz</option>
+            <option value="250" selected>250.0 kHz</option>
+            <option value="500">500.0 kHz</option>
+          </select>
         </div>
 
         <div class="button-group-grid">
