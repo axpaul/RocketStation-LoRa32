@@ -657,7 +657,7 @@ function renderTelemetryTable() {
       <td>${f.size} ${getTranslation('unit_bytes')}</td>
       <td>${f.rssi} dBm</td>
       <td>${f.snr} dB</td>
-      <td><span class="badge connected">OK (${f.crcHex})</span></td>
+      <td><span style="font-family: var(--font-mono); color: var(--color-success); font-weight: 600; white-space: nowrap;">✔ ${f.crcHex}</span></td>
       <td style="font-family: var(--font-mono); color: var(--color-cyan); word-break: break-all;">${f.payload}</td>
     `;
     tableTelemetryBody.appendChild(tr);
