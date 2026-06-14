@@ -66,7 +66,7 @@ Les données transitent sous deux formats de trames différents selon le canal (
 *   **Trames Série NectarMC (USB / Bluetooth)** : Trames binaires enrichies de métadonnées (RSSI, SNR, horodatage de réception RTC, et signature CRC globale).
 
 Pour consulter les schémas binaires complets, les descriptions détaillées de chaque octet et les tables d'encodage :
-👉 **[Consulter le Guide des Formats de Trames](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/FRAME_GUIDE.md)**
+👉 **[Consulter le Guide des Formats de Trames](./FRAME_GUIDE.md)**
 
 ---
 
@@ -77,7 +77,7 @@ Pour garantir la fiabilité de la transmission des données de la fusée jusqu'�
 2. **Liaison Série & Bluetooth (Station Sol ➔ PC)** : CRC logiciel calculé par l'ESP32 et vérifié à la réception par le PC (NectarMC ou Dashboard Web).
 
 Pour une explication détaillée de ces deux niveaux de sécurité et un guide pas-à-pas idéal pour les débutants :
-👉 **[Consulter le Guide complet sur les CRC](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/CRC_GUIDE.md)**
+👉 **[Consulter le Guide complet sur les CRC](./CRC_GUIDE.md)**
 
 ---
 
@@ -96,19 +96,23 @@ Chaque commande doit se terminer par un retour chariot (`\n` ou `\r`). Les répo
 | Commande | Rôle | Format de Réponse & Exemples |
 | :--- | :--- | :--- |
 | **`AT`** | Teste la communication avec la station | `OK` |
+| **`AT+HELP`** ou **`AT?`** | Affiche la liste d'aide de toutes les commandes AT | Renvoie la liste complète des commandes supportées suivie de `OK` |
+| **`AT+INFO`** ou **`AT+VER`** | Interroge l'identification de la station et sa version | Renvoie `+INFO: RocketStation RX NECTAR,FW=1.5.0,Band=868` (ou `433`) suivi de `OK` |
 | **`AT+FREQ=<val>`** | Modifie la fréquence LoRa active (en MHz) | Ex: `AT+FREQ=869.525`. Renvoie `OK` ou `ERROR`. |
 | **`AT+FREQ?`** | Interroge la fréquence active | Renvoie `+FREQ: 869.525` suivi de `OK` |
 | **`AT+SF=<val>`** | Modifie le Spreading Factor LoRa | De `6` à `12`. Ex: `AT+SF=8`. Renvoie `OK` ou `ERROR`. |
 | **`AT+SF?`** | Interroge le Spreading Factor actif | Renvoie `+SF: 8` suivi de `OK` |
 | **`AT+BW=<val>`** | Modifie la bande passante LoRa (en kHz) | Valeur $> 0$. Ex: `AT+BW=250.0`. Renvoie `OK` ou `ERROR`. |
 | **`AT+BW?`** | Interroge la bande passante active | Renvoie `+BW: 250.0` suivi de `OK` |
-| **`AT+CRC=<0/1>[,0/1]`** | Active (`1`) ou désactive (`0`) le CRC matériel du SX1276.<br>Paramètre facultatif de mode : `0` = CCITT (par défaut), `1` = IBM (mode FSK). | Ex: `AT+CRC=1,0`. Renvoie `OK` ou `ERROR`. |
+| **`AT+CRC=<val>`** | Active (`1`) ou désactive (`0`) le CRC matériel du SX1276.<br>Paramètre facultatif de mode : `0` = CCITT, `1` = IBM. | Ex: `AT+CRC=1,0`. Renvoie `OK` ou `ERROR`. |
 | **`AT+CRC?`** | Interroge l'état et le mode du CRC matériel actif | Renvoie `+CRC: <activé>,<mode>` suivi de `OK` (ex: `+CRC: 1,0`) |
 | **`AT+TIME=<epoch>`** | Configure l'heure RTC de la station (Epoch Unix en secondes) | Ex: `AT+TIME=1781290382`. Renvoie `OK`. |
 | **`AT+TIME?`** | Interroge l'horloge RTC de la station (Epoch Unix en secondes) | Renvoie `+TIME: 1781290382` suivi de `OK`. |
 | **`AT+RSSI?`** | Interroge le RSSI du dernier paquet reçu (en dBm) | Renvoie `+RSSI: -85.0` suivi de `OK`. |
 | **`AT+SNR?`** | Interroge le SNR du dernier paquet reçu (en dB) | Renvoie `+SNR: 9.5` suivi de `OK`. |
 | **`AT+SIG?`** | Interroge à la fois le RSSI et le SNR du dernier paquet reçu | Renvoie `+SIG: RSSI=-85.0, SNR=9.5` suivi de `OK`. |
+| **`AT+LIST`** | Liste tous les fichiers CSV de log présents sur la carte SD | Renvoie les fichiers sous la forme `+LIST: <chemin>,<taille>` suivi de `OK` |
+| **`AT+DUMP=<file>`** | Transmet en direct le contenu textuel d'un fichier CSV de log | Renvoie le flux encadré par `+DUMP: START` et `+DUMP: END` suivi de `OK` |
 | **`AT+CFG`** ou **`AT+STATUS`** | Affiche le rapport complet de la configuration | Affiche la version, la bande native, les limites, les réglages actifs, l'état de la SD et du Bluetooth, suivi de `OK`. |
 | **`AT+SAVE`** | Persiste la configuration active dans la Flash (NVS) | Renvoie `OK`. Elle sera rechargée automatiquement au boot. |
 | **`AT+RESET`** | Efface la configuration personnalisée et redémarre | Renvoie `OK`, puis réinitialise la carte aux paramètres d'usine. |
@@ -157,11 +161,11 @@ graph TD
 
 ### Description des Modules
 
-*   **[main.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/main.cpp) (Orchestrateur)** : Point d'entrée principal. Il initialise les composants système dans `setup()` (port USB, Bluetooth Classic, configuration radio, carte SD) et gère l'exécution des tâches dans `loop()` (lecture périodique des commandes AT entrantes et mise à jour de l'affichage OLED toutes les secondes).
-*   **[radio.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/radio.cpp) (Gestion Radio & OLED)** : Configure le module radio SX1276 (via RadioLib), traite la réception asynchrone des trames LoRa (sécurisée par interruption matérielle via `setFlag()`) et met à jour l'affichage OLED (via U8g2). Il gère également le calcul dynamique des métriques réseau (débit instantané en B/s et liste des émetteurs actifs filtrée par un timeout de 10 secondes).
-*   **[serial.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/serial.cpp) (Sérialisation & Bluetooth Mirror)** : Implémente le calcul de somme de contrôle CRC16-CCITT et encapsule les payloads LoRa décodées dans le format de trame binaire officiel de NectarMC. Il s'occupe de dupliquer la trame finalisée sur le port série USB et sur le flux série Bluetooth Classic (`SerialBT`) lorsqu'un client est connecté.
-*   **[function.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/function.cpp) (Mémoire NVS, SD & Interface Graphique)** : Regroupe les fonctions utilitaires système. Il gère le stockage non-volatile (NVS via `<Preferences.h>`) pour sauvegarder/charger les configurations LoRa à chaud, effectue la détection et les tests de capacité de la carte SD, et écrit les logs au format CSV (`/log_X.csv`). Il pilote également les animations graphiques OLED (animation de démarrage du pylône radio et icônes visuelles d'état d'insertion de carte SD).
-*   **[header.h](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/include/header.h) (Configuration & Pinout)** : Fichier d'en-tête central. Il déclare les variables globales partagées, configure les constantes matérielles (mapping des broches GPIO pour l'écran I2C, le bus SPI de la radio, le bus SPI de la carte SD et le pin ADC de la batterie), et définit les structures de configuration (`LoRaConfig`) ainsi que les limites de fréquence ISM physiques autorisées par environnement de compilation.
+*   **[main.cpp](./src/main.cpp) (Orchestrateur)** : Point d'entrée principal. Il initialise les composants système dans `setup()` (port USB, Bluetooth Classic, configuration radio, carte SD) et gère l'exécution des tâches dans `loop()` (lecture périodique des commandes AT entrantes et mise à jour de l'affichage OLED toutes les secondes).
+*   **[radio.cpp](./src/radio.cpp) (Gestion Radio & OLED)** : Configure le module radio SX1276 (via RadioLib), traite la réception asynchrone des trames LoRa (sécurisée par interruption matérielle via `setFlag()`) et met à jour l'affichage OLED (via U8g2). Il gère également le calcul dynamique des métriques réseau (débit instantané en B/s et liste des émetteurs actifs filtrée par un timeout de 10 secondes).
+*   **[serial.cpp](./src/serial.cpp) (Sérialisation & Bluetooth Mirror)** : Implémente le calcul de somme de contrôle CRC16-CCITT et encapsule les payloads LoRa décodées dans le format de trame binaire officiel de NectarMC. Il s'occupe de dupliquer la trame finalisée sur le port série USB et sur le flux série Bluetooth Classic (`SerialBT`) lorsqu'un client est connecté.
+*   **[function.cpp](./src/function.cpp) (Mémoire NVS, SD & Interface Graphique)** : Regroupe les fonctions utilitaires système. Il gère le stockage non-volatile (NVS via `<Preferences.h>`) pour sauvegarder/charger les configurations LoRa à chaud, effectue la détection et les tests de capacité de la carte SD, et écrit les logs au format CSV (`/log_X.csv`). Il pilote également les animations graphiques OLED (animation de démarrage du pylône radio et icônes visuelles d'état d'insertion de carte SD).
+*   **[header.h](./include/header.h) (Configuration & Pinout)** : Fichier d'en-tête central. Il déclare les variables globales partagées, configure les constantes matérielles (mapping des broches GPIO pour l'écran I2C, le bus SPI de la radio, le bus SPI de la carte SD et le pin ADC de la batterie), et définit les structures de configuration (`LoRaConfig`) ainsi que les limites de fréquence ISM physiques autorisées par environnement de compilation.
 
 ---
 

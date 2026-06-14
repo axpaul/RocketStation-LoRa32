@@ -6,7 +6,7 @@ Ce guide décrit en détail les formats et la structure binaire des trames utili
 
 ## 📡 1. Format des Trames Radio LoRa (Air)
 
-Les trames émises par les trackers/émetteurs dans les airs vers la station sol respectent le format suivant. La présence ou non du CRC en queue dépend du mode de contrôle configuré (voir le [Guide sur les CRC](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/CRC_GUIDE.md)) :
+Les trames émises par les trackers/émetteurs dans les airs vers la station sol respectent le format suivant. La présence ou non du CRC en queue dépend du mode de contrôle configuré (voir le [Guide sur les CRC](./CRC_GUIDE.md)) :
 
 ### Option A : Format avec CRC matériel (Recommandé & Par défaut)
 Le contrôle d'intégrité est pris en charge directement par le silicium de la puce SX1276. Le paquet LoRa physique se compose uniquement du Header Applicatif et des Données Utiles.
@@ -23,7 +23,7 @@ Le contrôle d'intégrité est pris en charge directement par le silicium de la 
 ```
 
 ### Option B : Format avec CRC logiciel (Si le CRC matériel est désactivé)
-Si le CRC matériel est désactivé (`AT+CRC=0`), la station s'attend à ce que l'émetteur calcule un CRC16 logiciel et l'ajoute à la fin de la charge utile LoRa. L'ESP32 de la station sol vérifiera ce CRC logiciel avant de valider le paquet (voir [radio.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/radio.cpp#L295-L318)).
+Si le CRC matériel est désactivé (`AT+CRC=0`), la station s'attend à ce que l'émetteur calcule un CRC16 logiciel et l'ajoute à la fin de la charge utile LoRa. L'ESP32 de la station sol vérifiera ce CRC logiciel avant de valider le paquet (voir [radio.cpp](./src/radio.cpp#L295-L318)).
 * **Taille totale** : $5 + N$ octets.
 
 ```
@@ -97,6 +97,6 @@ Pour s'assurer que vos parseurs et décodeurs côté PC (sur NectarMC ou votre p
 ---
 
 ## Liens Utiles :
-* **[README.md](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/README.md)** : Retourner à la page principale.
-* **[CRC_GUIDE.md](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/CRC_GUIDE.md)** : Guide explicatif des deux niveaux de CRC (Liaison Radio et Liaison Série).
-* **[src/serial.cpp](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/RocketStation-LoRa32/src/serial.cpp)** : Code source de formatage et d'envoi de la trame série vers le PC.
+* **[README.md](./README.md)** : Retourner à la page principale.
+* **[CRC_GUIDE.md](./CRC_GUIDE.md)** : Guide explicatif des deux niveaux de CRC (Liaison Radio et Liaison Série).
+* **[src/serial.cpp](./src/serial.cpp)** : Code source de formatage et d'envoi de la trame série vers le PC.

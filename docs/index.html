@@ -15,10 +15,36 @@
   <header>
     <div class="logo-container">
       <div class="antenna-icon">
-        <div class="antenna-mast"></div>
-        <div class="antenna-ring ring-1"></div>
-        <div class="antenna-ring ring-2"></div>
-        <div class="antenna-ring ring-3"></div>
+        <svg class="antenna-svg" viewBox="0 0 50 50" width="45" height="45">
+          <!-- Antenna waves (arcs facing left) -->
+          <path class="antenna-wave wave-1" d="M 25,6 A 8,8 0 0,0 25,22" fill="none" stroke="var(--color-primary)" stroke-width="1.5" stroke-linecap="round" />
+          <path class="antenna-wave wave-2" d="M 25,-2 A 16,16 0 0,0 25,30" fill="none" stroke="var(--color-primary)" stroke-width="1.5" stroke-linecap="round" />
+          <path class="antenna-wave wave-3" d="M 25,-10 A 24,24 0 0,0 25,38" fill="none" stroke="var(--color-primary)" stroke-width="1.5" stroke-linecap="round" />
+          
+          <!-- Pylon Structure -->
+          <!-- Left Leg -->
+          <line x1="25" y1="25" x2="15" y2="45" stroke="var(--text-main)" stroke-width="2" stroke-linecap="round" />
+          <!-- Right Leg -->
+          <line x1="25" y1="25" x2="35" y2="45" stroke="var(--text-main)" stroke-width="2" stroke-linecap="round" />
+          <!-- Bottom Strut -->
+          <line x1="12" y1="45" x2="38" y2="45" stroke="var(--text-main)" stroke-width="2" stroke-linecap="round" />
+          
+          <!-- Horizontal strut at y=35 -->
+          <line x1="20" y1="35" x2="30" y2="35" stroke="var(--text-main)" stroke-width="1.5" stroke-linecap="round" />
+          
+          <!-- Diagonal crossbeams (struts) -->
+          <line x1="15" y1="45" x2="30" y2="35" stroke="var(--text-main)" stroke-width="1" stroke-linecap="round" />
+          <line x1="35" y1="45" x2="20" y2="35" stroke="var(--text-main)" stroke-width="1" stroke-linecap="round" />
+          <line x1="20" y1="35" x2="25" y2="25" stroke="var(--text-main)" stroke-width="1" stroke-linecap="round" />
+          <line x1="30" y1="35" x2="25" y2="25" stroke="var(--text-main)" stroke-width="1" stroke-linecap="round" />
+          
+          <!-- Vertical mast -->
+          <line x1="25" y1="25" x2="25" y2="14" stroke="var(--text-main)" stroke-width="2" stroke-linecap="round" />
+          
+          <!-- Transmitter bulb -->
+          <circle cx="25" cy="14" r="3" fill="var(--color-primary)" />
+          <circle cx="25" cy="14" r="6" fill="var(--color-primary)" opacity="0.4" class="bulb-glow" />
+        </svg>
       </div>
       <div>
         <h1 data-i18n="header_title">NECTAR RX STATION</h1>
@@ -213,6 +239,42 @@
           </div>
           <div class="progress-text">
             <span data-i18n="flash_status_label">Statut :</span> <span id="lbl-flash-status" data-i18n="flash_status_waiting">Attente...</span> (<span id="lbl-flash-percent">0%</span>)
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4.2 JOURNAUX CARTE SD -->
+    <section class="card sd-logs-panel">
+      <h2 data-i18n="sd_title">📁 Journaux Carte SD</h2>
+      <div class="card-content">
+        <p class="description" data-i18n="sd_desc">Listez et téléchargez directement les fichiers CSV de vol enregistrés sur la carte SD.</p>
+        <div class="button-group-row">
+          <button id="btn-list-sd" class="btn btn-secondary" data-i18n="sd_btn_list" disabled>Lister les fichiers</button>
+        </div>
+        
+        <div class="sd-files-container table-container" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--bg-card-border); border-radius: 4px; background: rgba(0, 0, 0, 0.2);">
+          <table id="table-sd-files" style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--bg-card-border); text-align: left;">
+                <th style="padding: 0.5rem;" data-i18n="sd_th_name">Nom</th>
+                <th style="padding: 0.5rem;" data-i18n="sd_th_size">Taille</th>
+                <th style="padding: 0.5rem; text-align: right;" data-i18n="sd_th_action">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr id="row-empty-sd-files">
+                <td colspan="3" class="text-center text-secondary" data-i18n="sd_files_empty" style="padding: 1rem 0; text-align: center;">Aucun fichier listé</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="progress-container hidden" id="sd-download-progress-container" style="margin-top: 0.5rem;">
+          <div class="progress-bar-wrapper" style="height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; position: relative;">
+            <div id="sd-download-progress-bar" class="progress-bar" style="width: 0%; height: 100%; background: var(--color-accent); transition: width 0.1s ease;"></div>
+          </div>
+          <div class="progress-text" style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+            <span><span data-i18n="sd_status_label">Téléchargement :</span> <span id="lbl-sd-download-status">0%</span></span>
           </div>
         </div>
       </div>

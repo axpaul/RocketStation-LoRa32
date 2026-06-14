@@ -385,6 +385,99 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
     ESP.restart();
   }
 
+  // AT+HELP ou AT?
+  else if (strcmp(cmd, "AT+HELP") == 0 || strcmp(cmd, "AT?") == 0) {
+    responseStream.println("--- Available AT Commands ---");
+    responseStream.println("AT             : Test link");
+    responseStream.println("AT+HELP or AT? : Print this help menu");
+    responseStream.println("AT+INFO or AT+VER : Print station identification");
+    responseStream.println("AT+FREQ=<mhz>  : Set active frequency (e.g. 869.525)");
+    responseStream.println("AT+FREQ?       : Get active frequency");
+    responseStream.println("AT+SF=<6-12>   : Set active Spreading Factor");
+    responseStream.println("AT+SF?         : Get active Spreading Factor");
+    responseStream.println("AT+BW=<khz>    : Set active Bandwidth");
+    responseStream.println("AT+BW?         : Get active Bandwidth");
+    responseStream.println("AT+CRC=<0|1>   : Set Hardware CRC (0=OFF, 1=ON)");
+    responseStream.println("AT+CRC?        : Get Hardware CRC status");
+    responseStream.println("AT+TIME=<epoch>: Set RTC time (Unix Epoch)");
+    responseStream.println("AT+TIME?       : Get RTC time (Unix Epoch)");
+    responseStream.println("AT+RSSI?       : Get last received packet RSSI");
+    responseStream.println("AT+SNR?        : Get last received packet SNR");
+    responseStream.println("AT+SIG?        : Get RSSI and SNR of last packet");
+    responseStream.println("AT+CFG         : Get detailed configuration");
+    responseStream.println("AT+LIST        : List CSV log files on SD card");
+    responseStream.println("AT+DUMP=<file> : Dump CSV log file contents");
+    responseStream.println("AT+SAVE        : Save current config to NVS");
+    responseStream.println("AT+RESET       : Reset config to factory & reboot");
+    responseStream.println("-----------------------------");
+    responseStream.println("OK");
+  }
+
+  // AT+INFO ou AT+VER
+  else if (strcmp(cmd, "AT+INFO") == 0 || strcmp(cmd, "AT+VER") == 0) {
+    responseStream.printf("+INFO: RocketStation RX NECTAR,FW=%s,Band=%d\n", FW_VERSION, LORA_BAND_NATIVE);
+    responseStream.println("OK");
+  }
+
+  // AT+LIST
+  else if (strcmp(cmd, "AT+LIST") == 0) {
+    if (!*SDCard) {
+      responseStream.println("ERROR: SD card offline");
+      return;
+    }
+    File root = SD.open("/");
+    if (!root) {
+      responseStream.println("ERROR: Failed to open root");
+      return;
+    }
+    File file = root.openNextFile();
+    while (file) {
+      if (!file.isDirectory()) {
+        const char* name = file.name();
+        if (strstr(name, "log") != NULL && strstr(name, ".csv") != NULL) {
+          responseStream.printf("+LIST: %s,%d\n", name, file.size());
+        }
+      }
+      file = root.openNextFile();
+    }
+    root.close();
+    responseStream.println("OK");
+  }
+
+  // AT+DUMP=<file>
+  else if (strncmp(cmd, "AT+DUMP=", 8) == 0) {
+    if (!*SDCard) {
+      responseStream.println("ERROR: SD card offline");
+      return;
+    }
+    const char* filename = cmd + 8;
+    char fullPath[64];
+    if (filename[0] != '/') {
+      snprintf(fullPath, sizeof(fullPath), "/%s", filename);
+    } else {
+      snprintf(fullPath, sizeof(fullPath), "%s", filename);
+    }
+    if (!SD.exists(fullPath)) {
+      responseStream.printf("ERROR: File %s not found\n", fullPath);
+      return;
+    }
+    File file = SD.open(fullPath, FILE_READ);
+    if (!file) {
+      responseStream.println("ERROR: Failed to open file");
+      return;
+    }
+    responseStream.println("+DUMP: START");
+    uint8_t buf[64];
+    while (file.available()) {
+      int len = file.read(buf, sizeof(buf));
+      responseStream.write(buf, len);
+    }
+    file.close();
+    responseStream.println(); // ensure clean final newline
+    responseStream.println("+DUMP: END");
+    responseStream.println("OK");
+  }
+
   // Cas d'erreur : commande non reconnue
   else {
     responseStream.printf("ERROR: Unknown AT command '%s'\n", cmd);

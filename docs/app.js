@@ -14,6 +14,13 @@ let readLoopPromise = null; // Promesse pour suivre la fin de la boucle de lectu
 let activeTrackers = {};    // Dictionnaire des émetteurs détectés : { name: { typeLabelKey, lastApid, packetCount, lastSeen, lastPayloadHex } }
 let allReceivedFrames = []; // Historique complet pour export CSV (capé à 5000 trames)
 
+// Variables pour le téléchargement de logs depuis la carte SD
+let isDownloadingSdFile = false;
+let sdDownloadFilename = '';
+let sdDownloadSize = 0;
+let sdDownloadBuffer = [];
+let sdDownloadLinesCount = 0;
+
 // Variables pour le calcul de débit et le graphique
 let bytesCountThisSecond = 0;
 let lastThroughputCalculation = Date.now();
@@ -41,8 +48,21 @@ const i18n = {
     badge_disconnected: "Déconnecté",
     badge_connected: "Connecté",
     header_title: "NECTAR RX STATION",
-    header_subtitle: "Web Control Center v1.3.1",
+    header_subtitle: "Web Control Center v1.5.0",
     conn_title: "🔌 Liaison Série USB",
+    sd_title: "📁 Journaux Carte SD",
+    sd_desc: "Listez et téléchargez directement les fichiers CSV de vol enregistrés sur la carte SD.",
+    sd_btn_list: "Lister les fichiers",
+    sd_th_name: "Nom",
+    sd_th_size: "Taille",
+    sd_th_action: "Action",
+    sd_files_empty: "Aucun fichier listé",
+    sd_status_label: "Téléchargement :",
+    sd_download_btn: "Télécharger",
+    sd_download_wait: "Téléchargement...",
+    log_sd_download_start: "Téléchargement du fichier {file}...",
+    log_sd_download_success: "Téléchargement réussi : {file} ({lines} lignes)",
+    log_sd_download_error: "Erreur lors du téléchargement : {message}",
     conn_baudrate: "Vitesse de transmission (Baud) :",
     conn_fw_version: "Version Décodeur / Trame :",
     conn_btn_connect: "Connexion",
@@ -146,8 +166,21 @@ const i18n = {
     badge_disconnected: "Disconnected",
     badge_connected: "Connected",
     header_title: "NECTAR RX STATION",
-    header_subtitle: "Web Control Center v1.3.1",
+    header_subtitle: "Web Control Center v1.5.0",
     conn_title: "🔌 USB Serial Link",
+    sd_title: "📁 SD Card Logs",
+    sd_desc: "List and download flight CSV files recorded on the SD card.",
+    sd_btn_list: "List Files",
+    sd_th_name: "Name",
+    sd_th_size: "Size",
+    sd_th_action: "Action",
+    sd_files_empty: "No files listed",
+    sd_status_label: "Downloading:",
+    sd_download_btn: "Download",
+    sd_download_wait: "Downloading...",
+    log_sd_download_start: "Downloading {file}...",
+    log_sd_download_success: "Download successful: {file} ({lines} lines)",
+    log_sd_download_error: "Download error: {message}",
     conn_baudrate: "Baud Rate:",
     conn_fw_version: "Decoder / Frame Version:",
     conn_btn_connect: "Connect",
@@ -355,6 +388,7 @@ const btnClearTerminal = document.getElementById('btn-clear-terminal');
 const btnClearTelemetry = document.getElementById('btn-clear-telemetry');
 const btnExportTelemetry = document.getElementById('btn-export-telemetry');
 const btnClearTrackers = document.getElementById('btn-clear-trackers');
+const btnListSd = document.getElementById('btn-list-sd');
 
 // Helper sécurisé pour activer/désactiver un élément s'il existe
 function setElementDisabled(el, disabled) {
@@ -419,6 +453,7 @@ function updateConnectionUI(connected, name = '') {
   setElementDisabled(btnResetCfg, disabledState);
   setElementDisabled(terminalInput, disabledState);
   setElementDisabled(btnSend, disabledState);
+  setElementDisabled(btnListSd, disabledState);
 }
 
 // Convertit un tableau d'octets en chaîne hexadécimale continue
@@ -611,6 +646,28 @@ function parseRxBuffer() {
         const lineText = decoder.decode(new Uint8Array(lineBytes)).trim();
         
         if (lineText.length > 0) {
+          if (lineText === "+DUMP: START") {
+            isDownloadingSdFile = true;
+            sdDownloadBuffer = [];
+            sdDownloadLinesCount = 0;
+            return;
+          }
+          if (lineText === "+DUMP: END") {
+            isDownloadingSdFile = false;
+            finishSdFileDownload();
+            return;
+          }
+          if (isDownloadingSdFile) {
+            sdDownloadBuffer.push(lineText);
+            sdDownloadLinesCount++;
+            
+            const approxBytes = sdDownloadLinesCount * 60;
+            let percent = Math.min(99, Math.round((approxBytes / sdDownloadSize) * 100));
+            if (isNaN(percent) || percent < 0) percent = 50;
+            updateSdProgress(percent);
+            return;
+          }
+          
           logToTerminal(lineText, 'cmd-out');
           parseATResponse(lineText);
         }
@@ -887,6 +944,17 @@ function checkTrackersTimeout() {
 
 // Analyse des réponses textuelles AT
 function parseATResponse(line) {
+  if (line.startsWith('+LIST:')) {
+    const val = line.substring(6).trim();
+    const parts = val.split(',');
+    if (parts.length === 2) {
+      const filename = parts[0];
+      const size = parseInt(parts[1], 10);
+      addSdFileToList(filename, size);
+    }
+    return;
+  }
+
   // Ligne de boot : "[CONFIG] Loaded from NVS: Freq=869.525 MHz, SF=8, BW=250.0 kHz, CRC=ON (Mode=CCITT)"
   if (line.includes('Loaded from NVS:')) {
     const match = line.match(/Freq=([\d.]+)\s*MHz,\s*SF=(\d+),\s*BW=([\d.]+)\s*kHz,\s*CRC=(ON|OFF)(?:\s*\(Mode=(CCITT|IBM)\))?/i);
@@ -1257,6 +1325,114 @@ async function flashFirmware() {
 if (btnConnect) btnConnect.addEventListener('click', connectSerial);
 if (btnDisconnect) btnDisconnect.addEventListener('click', disconnectSerial);
 if (btnFlash) btnFlash.addEventListener('click', flashFirmware);
+
+// Événements de la carte SD
+if (btnListSd) {
+  btnListSd.addEventListener('click', async () => {
+    // Vider la liste précédente
+    const tableBody = document.querySelector('#table-sd-files tbody');
+    if (tableBody) {
+      tableBody.innerHTML = '';
+      const rowEmpty = document.createElement('tr');
+      rowEmpty.id = 'row-empty-sd-files';
+      rowEmpty.innerHTML = `<td colspan="3" class="text-center text-secondary" style="padding: 1rem 0; text-align: center;">${getTranslation('sd_files_empty')}</td>`;
+      tableBody.appendChild(rowEmpty);
+    }
+    await sendSerialText('AT+LIST');
+  });
+}
+
+function addSdFileToList(filename, size) {
+  const tableBody = document.querySelector('#table-sd-files tbody');
+  const rowEmpty = document.getElementById('row-empty-sd-files');
+  if (rowEmpty) {
+    rowEmpty.style.display = 'none';
+  }
+  
+  const rowId = `sd-file-row-${filename.replace(/\//g, '_').replace(/\./g, '_')}`;
+  let row = document.getElementById(rowId);
+  if (!row) {
+    row = document.createElement('tr');
+    row.id = rowId;
+    row.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
+    tableBody.appendChild(row);
+  }
+  
+  let sizeStr = `${size} B`;
+  if (size > 1024 * 1024) {
+    sizeStr = `${(size / (1024 * 1024)).toFixed(2)} MB`;
+  } else if (size > 1024) {
+    sizeStr = `${(size / 1024).toFixed(1)} KB`;
+  }
+  
+  const cleanName = filename.startsWith('/') ? filename.substring(1) : filename;
+  
+  row.innerHTML = `
+    <td style="padding: 0.5rem; font-family: var(--font-mono);">${cleanName}</td>
+    <td style="padding: 0.5rem;">${sizeStr}</td>
+    <td style="padding: 0.5rem; text-align: right;">
+      <button class="btn btn-accent btn-sm btn-download-sd" data-filename="${filename}" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; border-radius: 4px;">
+        ${getTranslation('sd_download_btn')}
+      </button>
+    </td>
+  `;
+  
+  const btn = row.querySelector('.btn-download-sd');
+  btn.addEventListener('click', () => {
+    startSdFileDownload(filename, size);
+  });
+}
+
+async function startSdFileDownload(filename, size) {
+  if (isDownloadingSdFile) return;
+  
+  isDownloadingSdFile = true;
+  sdDownloadFilename = filename;
+  sdDownloadSize = size;
+  sdDownloadBuffer = [];
+  sdDownloadLinesCount = 0;
+  
+  const container = document.getElementById('sd-download-progress-container');
+  if (container) container.classList.remove('hidden');
+  updateSdProgress(0);
+  
+  logToTerminal(getTranslation('log_sd_download_start', { file: filename }), 'sys-out');
+  await sendSerialText(`AT+DUMP=${filename}`);
+}
+
+function finishSdFileDownload() {
+  updateSdProgress(100);
+  logToTerminal(getTranslation('log_sd_download_success', { file: sdDownloadFilename, lines: sdDownloadLinesCount }), 'sys-out');
+  
+  setTimeout(() => {
+    const container = document.getElementById('sd-download-progress-container');
+    if (container) container.classList.add('hidden');
+  }, 2000);
+  
+  const csvContent = sdDownloadBuffer.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  
+  const cleanName = sdDownloadFilename.startsWith('/') ? sdDownloadFilename.substring(1) : sdDownloadFilename;
+  link.setAttribute("download", `downloaded_${cleanName}`);
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  
+  isDownloadingSdFile = false;
+}
+
+function updateSdProgress(percent) {
+  const bar = document.getElementById('sd-download-progress-bar');
+  const label = document.getElementById('lbl-sd-download-status');
+  if (bar) bar.style.width = `${percent}%`;
+  if (label) label.textContent = `${percent}%`;
+}
 
 // Nettoyage console
 if (btnClearTerminal) {
