@@ -191,7 +191,7 @@ pio run -t upload
 > 
 > ### 1. Console Web de Contrôle & Flasheur en Ligne
 > Une interface web moderne et statique est disponible sans aucune installation requise. Elle communique en direct avec votre récepteur en USB :
-> 👉 **[Ouvrir la Nectar Rx Station Web Console (Live)](https://axpaul.github.io/RocketStation-LoRa32/)**
+> 👉 **[Ouvrir la Nectar Rx Station Web Console (Live)](https://axpaul.github.io/Nectar-RxStation-LoRa32/)**
 > 
 > Cette console web vous permet de :
 > *   **Piloter la station par port COM USB** : Connectez votre récepteur LoRa32 en un clic et configurez-le dynamiquement (fréquence, Spreading Factor, Bande Passante) à l'aide de boutons simples ou de la console AT interactive.
