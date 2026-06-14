@@ -1,6 +1,6 @@
 # Guide des Formats de Trames (Radio LoRa & Série NectarMC)
 
-Ce guide décrit en détail les formats et la structure binaire des trames utilisées par la station **RocketStation-LoRa32** pour la communication radio et la transmission série vers le PC.
+Ce guide décrit en détail les formats et la structure binaire des trames utilisées par la station **NECTAR RX STATION - LoRa32** pour la communication radio et la transmission série vers le PC.
 
 ---
 

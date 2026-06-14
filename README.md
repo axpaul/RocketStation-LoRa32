@@ -1,6 +1,6 @@
-# RocketStation-LoRa32 (Récepteur NectarMC)
+# NECTAR RX STATION - LoRa32 (Station Sol Nectar)
 
-**RocketStation-LoRa32** est une station au sol de réception LoRa destinée à capter la télémétrie de fusées expérimentales et de ballons-sondes. Elle repose sur la carte de développement [LilyGO TTGO T3 V1.6.1 (LoRa32 V2.1.6)](https://lilygo.cc/en-us/products/lora3) équipée d'un microcontrôleur ESP32, d'un module radio SX1276 et d'un écran OLED intégré. Elle fonctionne à la fréquence de 869.525 MHz (868 MHz ou 433 Mhz Bande ICM en fonction de la version).
+**NECTAR RX STATION - LoRa32** est la station au sol de réception LoRa officielle de l'écosystème **Nectar**, destinée à capter la télémétrie de fusées expérimentales et de ballons-sondes. Elle repose sur la carte de développement [LilyGO TTGO T3 V1.6.1 (LoRa32 V2.1.6)](https://lilygo.cc/en-us/products/lora3) équipée d'un microcontrôleur ESP32, d'un module radio SX1276 et d'un écran OLED intégré. Elle fonctionne à la fréquence de 869.525 MHz (868 MHz ou 433 Mhz Bande ICM en fonction de la version).
 
 Le but principal de cette station est d'assurer l'interface de réception physique pour le logiciel de visualisation et de traitement de télémétrie [NectarMC](https://github.com/mlavardin/NectarMC).
 
@@ -97,7 +97,7 @@ Chaque commande doit se terminer par un retour chariot (`\n` ou `\r`). Les répo
 | :--- | :--- | :--- |
 | **`AT`** | Teste la communication avec la station | `OK` |
 | **`AT+HELP`** ou **`AT?`** | Affiche la liste d'aide de toutes les commandes AT | Renvoie la liste complète des commandes supportées suivie de `OK` |
-| **`AT+INFO`** ou **`AT+VER`** | Interroge l'identification de la station et sa version | Renvoie `+INFO: RocketStation RX NECTAR,FW=1.5.0,Band=868` (ou `433`) suivi de `OK` |
+| **`AT+INFO`** ou **`AT+VER`** | Interroge l'identification de la station et sa version | Renvoie `+INFO: NECTAR RX STATION,FW=1.5.0,Band=868` (ou `433`) suivi de `OK` |
 | **`AT+FREQ=<val>`** | Modifie la fréquence LoRa active (en MHz) | Ex: `AT+FREQ=869.525`. Renvoie `OK` ou `ERROR`. |
 | **`AT+FREQ?`** | Interroge la fréquence active | Renvoie `+FREQ: 869.525` suivi de `OK` |
 | **`AT+SF=<val>`** | Modifie le Spreading Factor LoRa | De `6` à `12`. Ex: `AT+SF=8`. Renvoie `OK` ou `ERROR`. |
@@ -187,11 +187,11 @@ pio run -t upload
 ## Outils de l'Écosystème NectarMC
 
 > [!IMPORTANT]
-> Pour exploiter pleinement votre station sol RocketStation-LoRa32, vous pouvez utiliser les deux solutions logicielles officielles :
+> Pour exploiter pleinement votre station sol **NECTAR RX STATION - LoRa32**, vous pouvez utiliser les deux solutions logicielles officielles :
 > 
 > ### 1. Console Web de Contrôle & Flasheur en Ligne
 > Une interface web moderne et statique est disponible sans aucune installation requise. Elle communique en direct avec votre récepteur en USB :
-> 👉 **[Ouvrir la Nectar Rx Station Web Console (Live)](https://axpaul.github.io/RocketStation-LoRa32/)**
+> 👉 **[Ouvrir la Nectar Rx Station Web Console (Live)](https://axpaul.github.io/Nectar-RxStation-LoRa32/)**
 > 
 > Cette console web vous permet de :
 > *   **Piloter la station par port COM USB** : Connectez votre récepteur LoRa32 en un clic et configurez-le dynamiquement (fréquence, Spreading Factor, Bande Passante) à l'aide de boutons simples ou de la console AT interactive.
@@ -208,6 +208,6 @@ pio run -t upload
 ## Auteur
 
 *   **Paul Miailhe ([axpaul](https://github.com/axpaul))** :
-    *   **Concepteur principal** du projet matériel et logiciel de la station de réception sol RocketStation-LoRa32.
+    *   **Concepteur principal** du projet matériel et logiciel de la station de réception sol **NECTAR RX STATION - LoRa32**.
     *   **Version originale (MSE)** : Juin 2023.
     *   **Refonte & Améliorations** : Mai/Juin 2026 (Intégration du protocole binaire NectarMC, animation graphique live de pylône OLED, décodeur et gestionnaire de trackers dynamiques et interface Web de contrôle/flashage en ligne par Web Serial API).

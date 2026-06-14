@@ -1,6 +1,6 @@
 /**
  * @file header.h
- * @brief Fichier d'en-tête global pour le projet RocketStation-LoRa32.
+ * @brief Fichier d'en-tête global pour le projet Nectar-RxStation-LoRa32.
  * @author Paul Miailhe
  * @date 14/06/2023
  * 

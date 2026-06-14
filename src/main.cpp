@@ -1,6 +1,6 @@
 /**
  * @file main.cpp
- * @brief Point d'entrée principal du récepteur au sol RocketStation-LoRa32.
+ * @brief Point d'entrée principal du récepteur au sol Nectar-RxStation-LoRa32.
  * @author Paul Miailhe
  * @date 14/06/2023
  * 
@@ -351,7 +351,7 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
 
   // AT+CFG ou AT+STATUS
   else if (strcmp(cmd, "AT+CFG") == 0 || strcmp(cmd, "AT+STATUS") == 0) {
-    responseStream.println("--- RocketStation Configuration ---");
+    responseStream.println("--- Nectar RxStation Configuration ---");
     responseStream.printf("Firmware Version  : %s\n", FW_VERSION);
     responseStream.printf("Native Band Limit : %d MHz\n", LORA_BAND_NATIVE);
     responseStream.printf("Allowed Range     : [%.1f - %.1f] MHz\n", FREQ_MIN, FREQ_MAX);
@@ -415,7 +415,7 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
 
   // AT+INFO ou AT+VER
   else if (strcmp(cmd, "AT+INFO") == 0 || strcmp(cmd, "AT+VER") == 0) {
-    responseStream.printf("+INFO: RocketStation RX NECTAR,FW=%s,Band=%d\n", FW_VERSION, LORA_BAND_NATIVE);
+    responseStream.printf("+INFO: NECTAR RX STATION,FW=%s,Band=%d\n", FW_VERSION, LORA_BAND_NATIVE);
     responseStream.println("OK");
   }
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Script de simulation de trames série NectarMC pour RocketStation-LoRa32.
+Script de simulation de trames série NectarMC pour Nectar-RxStation-LoRa32.
 Ce script génère des trames valides (CRC OK) et corrompues (CRC KO) sur un port série virtuel
 pour tester et valider le comportement du site web Ground Station sans nécessiter de matériel réel.
 
@@ -26,7 +26,7 @@ NECTAR_MAGIC = 0xEB
 def calculate_crc16_ccitt(data: bytes) -> int:
     """
     Calcule le CRC16-CCITT (polynôme 0x1021, valeur initiale 0xFFFF)
-    identique à l'implémentation C++ et JavaScript de RocketStation.
+    identique à l'implémentation C++ et JavaScript de Nectar-RxStation.
     """
     crc = 0xFFFF
     for byte in data:
@@ -80,7 +80,7 @@ def main():
     baud = 115200
     
     print("==========================================================")
-    print("      Simulateur de Trames Série RocketStation-LoRa32")
+    print("      Simulateur de Trames Série Nectar-RxStation-LoRa32")
     print("==========================================================")
     print(f"Connexion au port série : {port} à {baud} baud...")
     

@@ -1,6 +1,6 @@
 # Guide Complet sur les 2 Niveaux de Contrôle d'Intégrité (CRC)
 
-Ce guide est destiné aux utilisateurs de la station au sol **RocketStation-LoRa32** (débutants ou initiés) afin de comprendre comment l'intégrité des données est préservée tout au long du trajet de la fusée/ballon jusqu'à l'ordinateur de contrôle.
+Ce guide est destiné aux utilisateurs de la station au sol **NECTAR RX STATION - LoRa32** (débutants ou initiés) afin de comprendre comment l'intégrité des données est préservée tout au long du trajet de la fusée/ballon jusqu'à l'ordinateur de contrôle.
 
 Pour garantir qu'aucune donnée n'est perdue ou corrompue, la station utilise **deux niveaux de contrôle d'intégrité (CRC)** distincts :
 
