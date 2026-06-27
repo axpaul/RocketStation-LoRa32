@@ -84,59 +84,14 @@ Pour garantir la fiabilité de la transmission des données de la fusée jusqu'�
 Pour une explication détaillée de ces deux niveaux de sécurité et un guide pas-à-pas idéal pour les débutants :
 👉 **[Consulter le Guide complet sur les CRC](./CRC_GUIDE.md)**
 
----
-
 ## Commandes de Configuration AT (Série / Bluetooth)
 
-La station sol dispose d'un décodeur de commandes AT standard permettant de configurer la radio à chaud (en USB à **115200 bauds** ou sans fil via liaison **Bluetooth Classic (SPP)** avec l'appareil **`Nectar-RxStation-XXXX`**).
+La station sol dispose d'un décodeur interactif de commandes AT permettant de configurer la radio à chaud (en USB à **115200 bauds** ou sans fil en **Bluetooth SPP**).
 
-Chaque commande doit se terminer par un retour chariot (`\n` ou `\r`). Les réponses sont renvoyées sur le même canal que celui d'où provient la commande.
+Pour garantir une communication fluide et éviter tout conflit avec les données binaires de télémétrie de la fusée, toutes les commandes d'administration doivent commencer par le préfixe **`AT`**.
 
-> [!IMPORTANT]
-> **Sécurité Anti-Conflit :**
-> Toutes les commandes doivent obligatoirement commencer par le préfixe **`AT`**. Tout flux série ou Bluetooth ne débutant pas par ces deux lettres est silencieusement ignoré. Cela évite tout conflit avec des trames de données binaires entrantes ou du bruit sur le port.
-
-### Liste des commandes AT disponibles
-
-| Commande                      | Rôle                                                                                      | Format de Réponse & Exemples                                                                           |
-| :---------------------------- | :---------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- |
-| **`AT`**                      | Teste la communication avec la station                                                    | `OK`                                                                                                   |
-| **`AT+HELP`** ou **`AT?`**    | Affiche la liste d'aide de toutes les commandes AT                                        | Renvoie la liste complète des commandes supportées suivie de `OK`                                      |
-| **`AT+INFO`** ou **`AT+VER`**  | Interroge l'identification de la station et sa version                                    | Renvoie `+INFO: NECTAR RX STATION,FW=1.6.0,Band=868` (ou `433`) suivie de `OK`                         |
-| **`AT+FREQ=<val>`**            | Modifie la fréquence LoRa active (en MHz)                                                 | Ex: `AT+FREQ=869.525`. Renvoie `OK` ou `ERROR`.                                                        |
-| **`AT+FREQ?`**                | Interroge la fréquence active                                                             | Renvoie `+FREQ: 869.525` suivi de `OK`                                                                 |
-| **`AT+SF=<val>`**              | Modifie le Spreading Factor LoRa                                                          | De `6` à `12`. Ex: `AT+SF=8`. Renvoie `OK` ou `ERROR`.                                                 |
-| **`AT+SF?`**                  | Interroge le Spreading Factor actif                                                       | Renvoie `+SF: 8` suivi de `OK`                                                                         |
-| **`AT+BW=<val>`**              | Modifie la bande passante LoRa (en kHz)                                                   | Valeur > 0. Ex: `AT+BW=250.0`. Renvoie `OK` ou `ERROR`.                                                |
-| **`AT+BW?`**                  | Interroge la bande passante active                                                        | Renvoie `+BW: 250.0` suivi de `OK`                                                                     |
-| **`AT+CRC=<val>`**            | Active (`1`) ou désactive (`0`) le CRC matériel du SX1276.<br>Mode: 0=CCITT, 1=IBM.       | Ex: `AT+CRC=1,0`. Renvoie `OK` ou `ERROR`.                                                             |
-| **`AT+CRC?`**                 | Interroge l'état et le mode du CRC matériel actif                                         | Renvoie `+CRC: <activé>,<mode>` suivi de `OK` (ex: `+CRC: 1,0`)                                        |
-| **`AT+TIME=<epoch>`**          | Configure l'heure RTC de la station (Epoch Unix en secondes)                              | Ex: `AT+TIME=1781290382`. Renvoie `OK`.                                                                |
-| **`AT+TIME?`**                | Interroge l'horloge RTC de la station (Epoch Unix en secondes)                            | Renvoie `+TIME: 1781290382` suivi de `OK`.                                                             |
-| **`AT+RSSI?`**                | Interroge le RSSI du dernier paquet reçu (en dBm)                                         | Renvoie `+RSSI: -85.0` suivi de `OK`.                                                                  |
-| **`AT+SNR?`**                 | Interroge le SNR du dernier paquet reçu (en dB)                                           | Renvoie `+SNR: 9.5` suivi de `OK`.                                                                     |
-| **`AT+SIG?`**                 | Interroge à la fois le RSSI et le SNR du dernier paquet reçu                              | Renvoie `+SIG: RSSI=-85.0, SNR=9.5` suivi de `OK`.                                                     |
-| **`AT+LIST`**                 | Liste tous les fichiers CSV de log présents sur la carte SD                               | Renvoie les fichiers sous la forme `+LIST: <chemin>,<taille>` suivi de `OK`                            |
-| **`AT+DUMP=<file>`**          | Transmet en direct le contenu textuel d'un fichier CSV de log                             | Renvoie le flux encadré par `+DUMP: START` et `+DUMP: END` suivi de `OK`                               |
-| **`AT+CFG`** ou **`AT+STATUS`**| Affiche le rapport complet de la configuration                                            | Affiche version, bande, limites, réglages, état SD, BT et la pile libre, suivi de `OK`.               |
-| **`AT+SAVE`**                 | Persiste la configuration active dans la Flash (NVS)                                      | Renvoie `OK`. Elle sera rechargée automatiquement au boot.                                             |
-| **`AT+RESET`**                | Efface la configuration personnalisée et redémarre                                        | Renvoie `OK`, puis réinitialise la carte aux paramètres d'usine.                                       |
-
-### Retours d'erreurs et statuts
-
-* **Succès général** :
-  * `OK`
-* **Erreur de limites de fréquence (Bandes ISM natives protégées)** :
-  * Si hors de la bande configurée :
-    `ERROR: Out of limits [863.0 - 870.0] MHz`
-* **Erreur de paramètre invalide** :
-  * Si la valeur du paramètre est incorrecte (ex. `AT+SF=13`) :
-    `ERROR: SF must be between 6 and 12`
-  * Si la bande passante demandée est négative ou nulle :
-    `ERROR: Bandwidth must be greater than 0`
-* **Erreur de commande inconnue** :
-  * Si la commande AT est incorrecte ou non supportée :
-    `ERROR: Unknown AT command '<votre_saisie>'`
+Pour la liste complète des commandes, leurs paramètres autorisés et le format de leurs réponses :
+👉 **[Consulter la Liste des Commandes AT](./AT_GUIDE.md)**
 
 ---
 
