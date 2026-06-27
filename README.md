@@ -18,10 +18,15 @@ Voici les vues de la carte de développement ainsi que son brochage (Pinout) et 
 
 <p align="center">
   <img src="Image/PIN-DIAGRAM_4162b444-51eb-42ec-9e20-7ce3fedd2dc1_600x600.jpg" alt="Pinout Diagram" width="500" />
+  <br>
+  <em>Brochage de la carte TTGO LoRa32</em>
 </p>
 <p align="center">
   <img src="Image/P-SIZE_600x600.jpg" alt="Board Dimensions" width="500" />
+  <br>
+  <em>Format de la carte LoRa32</em>
 </p>
+
 
 **[Télécharger la Fiche Technique et le Schéma PDF Officiel de la TTGO T3 V1.6.1](T3_V1.6.1.pdf)**
 
@@ -266,10 +271,15 @@ pio run -t upload
 > *   **Suivre les Trackers Actifs en temps réel** : La page liste automatiquement tous les émetteurs détectés (fusées, minifusées, ballons...) avec leurs types de mission, APID, nombre de trames et charges utiles. Elle détecte et marque automatiquement comme `PERDU` les trackers inactifs pendant plus de 15 secondes.
 > *   **Tracer le débit de données** : Un graphique SVG en temps réel affiche le flux instantané de données reçues.
 > *   **Flasher le firmware en ligne** : Mettez à jour le micrologiciel de votre carte TTGO avec la version **v1.3.1** native (en 868 ou 433 MHz) directement en un clic depuis le navigateur grâce à `esptool-js`.
-> 
 > ### 2. Logiciel de Traitement & Visualisation 3D : NectarMC
 > La station sol est entièrement configurée pour transmettre les données de vol en temps réel vers le logiciel principal de visualisation de la télémétrie :
 > 👉 **[Découvrir NectarMC sur GitHub](https://github.com/mlavardin/NectarMC)**
+
+<p align="center">
+   <img src="Image/NECTAR_WEB8CONTROL.png" width="600" />
+   <br>
+   <em>Vue du site web actuel de Nectar Rx Station Web Console</em>
+</p>
 
 ---
 
