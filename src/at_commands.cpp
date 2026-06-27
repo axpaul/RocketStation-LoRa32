@@ -1,8 +1,11 @@
 /**
  * @file at_commands.cpp
  * @brief Gestion de l'analyse, du décodage et de l'application des commandes AT.
+ * @version 1.6.0
  * @author Paul Miailhe
  * @date 27/06/2026
+ * 
+ * Version 1.6.0 : Refactorisation multitâche dual-core (FreeRTOS) et écran OLED séparé.
  */
 
 #include "header.h"

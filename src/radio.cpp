@@ -1,8 +1,11 @@
 /**
  * @file radio.cpp
- * @brief Contrôle du module radio SX1276 et gestion de l'affichage OLED dynamique.
+ * @brief Contrôle du module radio SX1276 et routines d'interruption.
+ * @version 1.6.0
  * @author Paul Miailhe
- * @date 14/06/2023
+ * @date 27/06/2026
+ * 
+ * Version 1.6.0 : Refactorisation multitâche dual-core (FreeRTOS) et écran OLED séparé.
  */
 
 #include "header.h"

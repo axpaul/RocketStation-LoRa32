@@ -1,8 +1,11 @@
 /**
  * @file display.cpp
  * @brief Gestion de l'affichage OLED dynamique (écrans de démarrage et de statut).
+ * @version 1.6.0
  * @author Paul Miailhe
  * @date 27/06/2026
+ * 
+ * Version 1.6.0 : Refactorisation multitâche dual-core (FreeRTOS) et écran OLED séparé.
  */
 
 #include "header.h"

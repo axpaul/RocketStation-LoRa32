@@ -1,13 +1,44 @@
-AT
-AT+FREQ?
-AT+SF?
-AT+BW?
-AT+STATUS
-AT+FREQ=869.525
-AT+FREQ?
-AT+SF=8
-AT+SF?
-AT+BW=250.0
-AT+BW?
-AT+CFG
-AT+SAVE
+================================================================================
+          LISTE DES COMMANDES AT DISPONIBLES — NECTAR RX STATION v1.6.0
+================================================================================
+
+1. COMMANDES SYSTÈME ET DIAGNOSTIC
+--------------------------------------------------------------------------------
+AT                  : Teste la liaison de communication. Renvoie "OK".
+AT+HELP (ou AT?)    : Affiche la liste d'aide de toutes les commandes AT.
+AT+INFO (ou AT+VER) : Interroge l'identification de la station et sa version.
+                      Format de réponse : "+INFO: NECTAR RX STATION,FW=1.6.0,Band=<native>"
+AT+CFG (ou AT+STATUS): Affiche la configuration détaillée de la station LoRa
+                      (version, bande native, fréquence, SF, BW, statut CRC,
+                      carte SD, statut Bluetooth, et mémoire libre des tâches).
+
+2. CONFIGURATION PHYSIQUE DE LA RADIO
+--------------------------------------------------------------------------------
+AT+FREQ?            : Interroge la fréquence active.
+AT+FREQ=<mhz>       : Modifie la fréquence active (ex: AT+FREQ=869.525).
+AT+SF?              : Interroge le Spreading Factor.
+AT+SF=<val>         : Modifie le Spreading Factor (de 6 à 12) (ex: AT+SF=8).
+AT+BW?              : Interroge la bande passante (BW).
+AT+BW=<val>         : Modifie la bande passante en kHz (ex: AT+BW=250.0).
+AT+CRC?             : Interroge le statut du CRC matériel.
+AT+CRC=<0|1>[,0|1]  : Active/désactive le CRC et définit le mode (ex: AT+CRC=1,0).
+                      Arguments :
+                      - Premier paramètre (requis)  : 0 = désactivé, 1 = activé.
+                      - Second paramètre (optionnel) : 0 = mode CCITT, 1 = mode IBM.
+
+3. RÉSILIENCE ET STOCKAGE (CARTE SD & NVS)
+--------------------------------------------------------------------------------
+AT+TIME?            : Interroge l'heure RTC sous forme de Timestamp Unix Epoch.
+AT+TIME=<epoch>     : Met à jour l'heure RTC de la station (Timestamp Unix Epoch).
+AT+LIST             : Liste les fichiers CSV d'enregistrement de vol sur la carte SD.
+AT+DUMP=<file>      : Affiche/télécharge l'intégralité d'un fichier CSV (ex: AT+DUMP=/log_0.csv).
+AT+SAVE             : Enregistre la configuration LoRa active en mémoire non-volatile NVS.
+AT+RESET            : Réinitialise aux paramètres d'usine par défaut et redémarre.
+
+4. PARAMÈTRES DE QUALITÉ DE SIGNAL
+--------------------------------------------------------------------------------
+AT+RSSI?            : Renvoie le RSSI en dBm de la dernière trame reçue.
+AT+SNR?             : Renvoie le SNR en dB de la dernière trame reçue.
+AT+SIG?             : Renvoie simultanément le RSSI et le SNR du dernier paquet.
+
+================================================================================

@@ -1,13 +1,15 @@
 /**
  * @file main.cpp
  * @brief Point d'entrée principal du récepteur au sol Nectar-RxStation-LoRa32.
+ * @version 1.6.0
  * @author Paul Miailhe
- * @date 14/06/2023
+ * @date 27/06/2026
  * 
  * Orchestre l'initialisation matérielle (SPI, I2C, OLED, Carte SD, Radio SX1276),
  * traite les interruptions LoRa, écrit les trames sur carte SD au format CSV
  * et les transmet en USB/Bluetooth au protocole binaire NectarMC.
  * Gère également la configuration dynamique par commandes AT.
+ * Version 1.6.0 : Refactorisation multitâche dual-core (FreeRTOS) et écran OLED séparé.
  */
 
 #include "header.h"

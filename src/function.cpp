@@ -1,8 +1,11 @@
 /**
  * @file function.cpp
  * @brief Fonctions utilitaires, gestion de la carte SD, de l'OLED et de la configuration NVS.
+ * @version 1.6.0
  * @author Paul Miailhe
- * @date 14/06/2023
+ * @date 27/06/2026
+ * 
+ * Version 1.6.0 : Refactorisation multitâche dual-core (FreeRTOS) et écran OLED séparé.
  */
 
 #include "header.h"
