@@ -145,27 +145,58 @@ Exemple de ligne de log :
 
 ---
 
-## Architecture Logicielle
+## Architecture Logicielle & Multitâche Temps Réel
 
-Le micrologiciel du récepteur est conçu avec une structure modulaire en C++ afin de séparer les responsabilités (entrées/sorties, affichage, stockage, communication sans fil) et d'assurer une exécution robuste et sans blocage des tâches critiques de réception radio.
+Le micrologiciel du récepteur est architecturé autour de l'OS temps réel **FreeRTOS** intégré au framework Arduino de l'ESP32. Il exploite les deux cœurs de la puce (Dual-Core) afin de séparer les tâches critiques (réception radio instantanée) des traitements lourds et potentiellement bloquants (écriture sur carte SD, pile Bluetooth).
 
 ```mermaid
 graph TD
-    Main[main.cpp <br/> Orchestrateur] -->|Initialise et cadence| Radio[radio.cpp <br/> Gestion Radio & OLED]
-    Main -->|Charge/Sauvegarde Config| Func[function.cpp <br/> Mémoire NVS, SD & IHM]
-    Radio -->|Achemine les paquets| Serial[serial.cpp <br/> Calcul CRC16 & Format NectarMC]
-    Radio -->|Rafraîchit| OLED[Ecran OLED <br/> Statuts & Écrans de Télémétrie]
-    Main -->|Enregistre les données| SD[function.cpp <br/> Journalisation CSV sur SD]
-    Serial -->|Transmet les trames| Output[USB Série & Bluetooth SerialBT]
+    %% Structure Multitâche
+    subgraph Core1 [Cœur 1 ESP32]
+        Main[main.cpp <br/> setup / loop - Prio 1] -->|Commande OLED| Disp[display.cpp <br/> Gestionnaire Écran]
+        Main -->|Lecture commandes| AT[at_commands.cpp <br/> Console AT]
+        RadioTask[vRadioRxTask <br/> Tâche Radio - Prio 3] -->|Débloquée par| ISR[setFlag ISR]
+        RadioTask -->|Lecture SPI| Radio[radio.cpp <br/> SX1276 RadioLib]
+    end
+
+    subgraph Core0 [Cœur 0 ESP32]
+        IOTask[vIOProcessingTask <br/> Tâche E/S - Prio 1] -->|Stockage CSV| SD[function.cpp <br/> Fichiers & NVS]
+        IOTask -->|Format NectarMC| Serial[serial.cpp <br/> USB & Bluetooth]
+    end
+
+    %% Communication
+    RadioTask -->|rxQueue <br/> FIFO Paquets| IOTask
+    AT -->|radioMutex| Radio
+    Main -->|radioMutex| Radio
 ```
+
+### Mécanismes de synchronisation
+1. **Sémaphore Binaire (`rxSemaphore`)** : L'interruption DIO0 (`setFlag()`) libère le sémaphore depuis l'IRAM. La tâche `vRadioRxTask` (Prio 3, Cœur 1), en attente bloquante, se réveille instantanément pour lire la trame.
+2. **File d'Attente (`rxQueue`)** : Les paquets LoRa validés sont encapsulés dans une structure `LoRaPacket` et poussés dans la file. La tâche d'E/S les récupère sur le Cœur 0 de manière asynchrone.
+3. **Mutex Radio (`radioMutex`)** : Protège le bus SPI de la radio contre les accès concurrents lors de l'application de commandes AT à chaud (changement de fréquence, SF, BW, etc.) pendant la réception active.
 
 ### Description des Modules
 
-*   **[main.cpp](./src/main.cpp) (Orchestrateur)** : Point d'entrée principal. Il initialise les composants système dans `setup()` (port USB, Bluetooth Classic, configuration radio, carte SD) et gère l'exécution des tâches dans `loop()` (lecture périodique des commandes AT entrantes et mise à jour de l'affichage OLED toutes les secondes).
-*   **[radio.cpp](./src/radio.cpp) (Gestion Radio & OLED)** : Configure le module radio SX1276 (via RadioLib), traite la réception asynchrone des trames LoRa (sécurisée par interruption matérielle via `setFlag()`) et met à jour l'affichage OLED (via U8g2). Il gère également le calcul dynamique des métriques réseau (débit instantané en B/s et liste des émetteurs actifs filtrée par un timeout de 10 secondes).
-*   **[serial.cpp](./src/serial.cpp) (Sérialisation & Bluetooth Mirror)** : Implémente le calcul de somme de contrôle CRC16-CCITT et encapsule les payloads LoRa décodées dans le format de trame binaire officiel de NectarMC. Il s'occupe de dupliquer la trame finalisée sur le port série USB et sur le flux série Bluetooth Classic (`SerialBT`) lorsqu'un client est connecté.
-*   **[function.cpp](./src/function.cpp) (Mémoire NVS, SD & Interface Graphique)** : Regroupe les fonctions utilitaires système. Il gère le stockage non-volatile (NVS via `<Preferences.h>`) pour sauvegarder/charger les configurations LoRa à chaud, effectue la détection et les tests de capacité de la carte SD, et écrit les logs au format CSV (`/log_X.csv`). Il pilote également les animations graphiques OLED (animation de démarrage du pylône radio et icônes visuelles d'état d'insertion de carte SD).
-*   **[header.h](./include/header.h) (Configuration & Pinout)** : Fichier d'en-tête central. Il déclare les variables globales partagées, configure les constantes matérielles (mapping des broches GPIO pour l'écran I2C, le bus SPI de la radio, le bus SPI de la carte SD et le pin ADC de la batterie), et définit les structures de configuration (`LoRaConfig`) ainsi que les limites de fréquence ISM physiques autorisées par environnement de compilation.
+*   **[main.cpp](./src/main.cpp)** : Point d'entrée principal. Il initialise les périphériques, crée les tâches FreeRTOS épinglées sur les cœurs et cadence le rafraîchissement d'afficheur.
+*   **[radio.cpp](./src/radio.cpp)** : Initialise le module SX1276 et contient la routine de service d'interruption (ISR) ainsi que la fonction de lecture bas niveau `RadioReceive()`.
+*   **[display.cpp](./src/display.cpp)** : Gère le rendu sur l'écran OLED U8g2 (animations de démarrage, menus de télémétrie en rotation et indicateurs de batterie/Bluetooth).
+*   **[at_commands.cpp](./src/at_commands.cpp)** : Analyseur syntaxique de la console AT interactive (USB & Bluetooth SPP). Permet également la surveillance de la **pile libre (Stack High Water Mark)** de chaque tâche FreeRTOS via la commande `AT+CFG`.
+*   **[serial.cpp](./src/serial.cpp)** : Encode les trames au format binaire NectarMC (avec CRC16-CCITT) et les pousse sur la liaison série USB et Bluetooth.
+*   **[function.cpp](./src/function.cpp)** : Gère le stockage CSV sur carte SD (bus HSPI indépendant) et la sauvegarde de configuration dans la mémoire flash non-volatile (NVS).
+*   **[header.h](./include/header.h)** : Déclare les types, structures, variables globales et constantes de pinout matérielles du projet.
+
+---
+
+## Tests Unitaires (Stabilité des tâches & CRC)
+
+Pour prévenir les risques d'overflow de pile (*stack overflow*) inhérents au multitâche FreeRTOS et valider la logique d'intégrité, une suite de tests unitaires sous le framework **Unity** est intégrée au projet.
+
+Le test `test_task_stacks_high_water_mark` instancie des tâches miroirs avec les allocations mémoire du firmware réel (4 Ko pour la radio, 8 Ko pour les E/S), leur fait exécuter des calculs lourds, et vérifie via `uxTaskGetStackHighWaterMark` qu'il reste au moins 10% d'espace de sécurité libre dans chaque pile.
+
+Pour exécuter les tests unitaires PlatformIO sur cible :
+```powershell
+C:\Users\paulm\.platformio\penv\Scripts\pio.exe test -e ttgo-lora32-v21-868
+```
 
 ---
 

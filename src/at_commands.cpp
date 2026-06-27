@@ -218,6 +218,12 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
 #if ENABLE_BLUETOOTH
     responseStream.printf("Bluetooth Client  : %s\n", SerialBT.connected() ? "Connected" : "Disconnected");
 #endif
+    if (xRadioRxTaskHandle != NULL) {
+      responseStream.printf("RadioRxTask Stack Free: %u B\n", uxTaskGetStackHighWaterMark(xRadioRxTaskHandle) * 4);
+    }
+    if (xIOProcessingTaskHandle != NULL) {
+      responseStream.printf("IOProcessingTask Stack Free: %u B\n", uxTaskGetStackHighWaterMark(xIOProcessingTaskHandle) * 4);
+    }
     responseStream.println("-----------------------------------");
     responseStream.println("OK");
   }

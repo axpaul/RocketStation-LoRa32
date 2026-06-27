@@ -116,15 +116,23 @@ extern LoRaConfig activeConfig;
 extern ESP32Time rtc;
 extern char logFileName[32];
 extern char dispStatus[32];
+extern char dispSsidApid[32];
 extern bool *SDCard;
 extern float dispRssi;
 extern float dispSnr;
+extern bool dispHasFrame;
 extern bool displayNeedsUpdate;
 
 // Handles FreeRTOS pour la synchronisation et communication multitâche
 extern SemaphoreHandle_t rxSemaphore;
 extern SemaphoreHandle_t radioMutex;
 extern QueueHandle_t rxQueue;
+extern TaskHandle_t xRadioRxTaskHandle;
+extern TaskHandle_t xIOProcessingTaskHandle;
+
+// Variables de statistiques partagées pour l'affichage
+extern unsigned long lastTrackerPacketTime[256];
+extern uint32_t bytesReceivedThisSecond;
 
 // ============================================================================
 // Prototypes de fonctions

@@ -29,6 +29,10 @@ uint8_t *byteArr = byteArrStatic;
 SX1276 radio = new Module(RADIO_CS_PIN, RADIO_DIO0_PIN, RADIO_RST_PIN, RADIO_BUSY_PIN);
 LoRaConfig activeConfig;
 
+// Descripteurs de tâches FreeRTOS pour surveillance
+TaskHandle_t xRadioRxTaskHandle = NULL;
+TaskHandle_t xIOProcessingTaskHandle = NULL;
+
 /**
  * @brief Initialisation matérielle et logicielle du système.
  */
@@ -111,7 +115,7 @@ void setup() {
     4096,                   /* Taille de pile (Stack size in bytes) */
     NULL,                   /* Paramètre d'entrée */
     3,                      /* Priorité élevée pour réagir à l'interruption */
-    NULL,                   /* Descripteur de tâche */
+    &xRadioRxTaskHandle,    /* Descripteur de tâche */
     1                       /* Épinglé sur le Cœur 1 */
   );
 
@@ -122,7 +126,7 @@ void setup() {
     8192,                   /* Stack large (8 Ko) indispensable pour pile Bluetooth */
     NULL,                   /* Paramètre d'entrée */
     1,                      /* Priorité normale */
-    NULL,                   /* Descripteur de tâche */
+    &xIOProcessingTaskHandle, /* Descripteur de tâche */
     0                       /* Épinglé sur le Cœur 0 */
   );
 
