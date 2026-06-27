@@ -8,9 +8,13 @@
 #include "header.h"
 
 // Variables d'état d'interruption et d'horloge
-volatile bool receivedFlag = false;
 volatile bool enableInterrupt = true;
 ESP32Time rtc;
+
+// Descripteurs globaux FreeRTOS définis pour la synchronisation inter-cœur
+SemaphoreHandle_t rxSemaphore = NULL;
+SemaphoreHandle_t radioMutex = NULL;
+QueueHandle_t rxQueue = NULL;
 
 // Métadonnées de la dernière trame pour l'affichage OLED
 char dispStatus[32] = "RX:0";
@@ -44,7 +48,13 @@ void IRAM_ATTR setFlag(void) {
     if (!enableInterrupt) {
         return;
     }
-    receivedFlag = true;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    if (rxSemaphore != NULL) {
+        xSemaphoreGiveFromISR(rxSemaphore, &xHigherPriorityTaskWoken);
+        if (xHigherPriorityTaskWoken == pdTRUE) {
+            portYIELD_FROM_ISR();
+        }
+    }
 }
 
 /**
@@ -279,110 +289,105 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
  * puis réactive l'écoute continue du composant radio.
  */
 size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, uint8_t* byteArr, size_t maxLen) {
-  if (receivedFlag) {
-    // Désactiver les interruptions le temps de traiter le paquet
-    enableInterrupt = false;
-    receivedFlag = false;
+  // Désactiver les interruptions le temps de traiter le paquet
+  enableInterrupt = false;
 
-    // Obtenir la taille du paquet reçu
-    size_t length = radio->getPacketLength();
-    if (length > maxLen) {
-      length = maxLen;
+  // Obtenir la taille du paquet reçu
+  size_t length = radio->getPacketLength();
+  if (length > maxLen) {
+    length = maxLen;
+  }
+
+  int state = radio->readData(byteArr, length);
+
+  if (state == RADIOLIB_ERR_NONE) {
+    // Si le CRC matériel est désactivé (Option B), on vérifie le CRC logiciel avant de valider la trame
+    if (!activeConfig.crcEnable) {
+      if (length < 5) {
+        errCount++;
+        snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
+        strcpy(dispSsidApid, "Invalid size (<5B)");
+        displayNeedsUpdate = true;
+        RadioStartListen(radio);
+        return 0;
+      }
+
+      uint16_t receivedCrc = byteArr[length - 2] | (byteArr[length - 1] << 8);
+      uint16_t calculatedCrc = calculate_crc16(byteArr, length - 2);
+
+      if (calculatedCrc != receivedCrc) {
+        errCount++;
+        snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
+        strcpy(dispSsidApid, "CRC Error (Soft)");
+        displayNeedsUpdate = true;
+        RadioStartListen(radio);
+        return 0;
+      }
+
+      // Retirer les 2 octets de CRC
+      length -= 2;
     }
 
-    int state = radio->readData(byteArr, length);
-
-    if (state == RADIOLIB_ERR_NONE) {
-      // Si le CRC matériel est désactivé (Option B), on vérifie le CRC logiciel avant de valider la trame
-      if (!activeConfig.crcEnable) {
-        if (length < 5) {
-          errCount++;
-          snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
-          strcpy(dispSsidApid, "Invalid size (<5B)");
-          displayNeedsUpdate = true;
-          RadioStartListen(radio);
-          return 0;
-        }
-
-        uint16_t receivedCrc = byteArr[length - 2] | (byteArr[length - 1] << 8);
-        uint16_t calculatedCrc = calculate_crc16(byteArr, length - 2);
-
-        if (calculatedCrc != receivedCrc) {
-          errCount++;
-          snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
-          strcpy(dispSsidApid, "CRC Error (Soft)");
-          displayNeedsUpdate = true;
-          RadioStartListen(radio);
-          return 0;
-        }
-
-        // Retirer les 2 octets de CRC
-        length -= 2;
-      }
-
-      rxCount++;
-      // Formatage compact sans espace et limitation à 3 chiffres (0-999) pour conserver de l'espace
-      uint32_t dispRx = rxCount % 1000;
-      uint32_t dispErr = errCount % 1000;
-      if (errCount == 0) {
-        snprintf(dispStatus, sizeof(dispStatus), "RX:%d", dispRx);
-      } else {
-        snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", dispRx, dispErr);
-      }
-      
-      // Décodage du couple SSID et APID (Trame minimale valide = 3 octets)
-      if (length >= 3) {
-        uint8_t ssid_num  = byteArr[0];
-        uint8_t apid      = byteArr[1];
-        uint8_t ssid_type = byteArr[2];
-
-        const char* ssid_prefix = "OTHER";
-        if (ssid_type == 0) ssid_prefix = "FX";
-        else if (ssid_type == 1) ssid_prefix = "MF";
-        else if (ssid_type == 2) ssid_prefix = "BALLOON";
-        else if (ssid_type == 3) ssid_prefix = "OTHER";
-
-        snprintf(dispSsidApid, sizeof(dispSsidApid), "%s%d (APID:%d)", ssid_prefix, ssid_num, apid);
-        
-        // Horodatage de présence du tracker
-        lastTrackerPacketTime[ssid_num] = millis();
-      } else {
-        strcpy(dispSsidApid, "Invalid frame (<3B)");
-      }
-      
-      dispRssi = radio->getRSSI();
-      dispSnr = radio->getSNR();
-      dispHasFrame = true;
-
-      // Statistiques de débit de données
-      bytesReceivedThisSecond += length;
-      lastPacketTime = millis();
-      hasReceivedAny = true;
-
-      displayNeedsUpdate = true;
-      RadioStartListen(radio);
-      return length;
-    } else if (state == RADIOLIB_ERR_CRC_MISMATCH) {
-      errCount++;
-      snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
-      dispRssi = radio->getRSSI();
-      dispSnr = radio->getSNR();
-      
-      displayNeedsUpdate = true;
-      RadioStartListen(radio);
-      return 0;
+    rxCount++;
+    // Formatage compact sans espace et limitation à 3 chiffres (0-999) pour conserver de l'espace
+    uint32_t dispRx = rxCount % 1000;
+    uint32_t dispErr = errCount % 1000;
+    if (errCount == 0) {
+      snprintf(dispStatus, sizeof(dispStatus), "RX:%d", dispRx);
     } else {
-      errCount++;
-      snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
-      dispRssi = radio->getRSSI();
-      dispSnr = radio->getSNR();
-      
-      displayNeedsUpdate = true;
-      RadioStartListen(radio);
-      return 0;
+      snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", dispRx, dispErr);
     }
+    
+    // Décodage du couple SSID et APID (Trame minimale valide = 3 octets)
+    if (length >= 3) {
+      uint8_t ssid_num  = byteArr[0];
+      uint8_t apid      = byteArr[1];
+      uint8_t ssid_type = byteArr[2];
+
+      const char* ssid_prefix = "OTHER";
+      if (ssid_type == 0) ssid_prefix = "FX";
+      else if (ssid_type == 1) ssid_prefix = "MF";
+      else if (ssid_type == 2) ssid_prefix = "BALLOON";
+      else if (ssid_type == 3) ssid_prefix = "OTHER";
+
+      snprintf(dispSsidApid, sizeof(dispSsidApid), "%s%d (APID:%d)", ssid_prefix, ssid_num, apid);
+      
+      // Horodatage de présence du tracker
+      lastTrackerPacketTime[ssid_num] = millis();
+    } else {
+      strcpy(dispSsidApid, "Invalid frame (<3B)");
+    }
+    
+    dispRssi = radio->getRSSI();
+    dispSnr = radio->getSNR();
+    dispHasFrame = true;
+
+    // Statistiques de débit de données
+    bytesReceivedThisSecond += length;
+    lastPacketTime = millis();
+    hasReceivedAny = true;
+
+    displayNeedsUpdate = true;
+    RadioStartListen(radio);
+    return length;
+  } else if (state == RADIOLIB_ERR_CRC_MISMATCH) {
+    errCount++;
+    snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
+    dispRssi = radio->getRSSI();
+    dispSnr = radio->getSNR();
+    
+    displayNeedsUpdate = true;
+    RadioStartListen(radio);
+    return 0;
   } else {
-    return 0; // Pas d'interruption
+    errCount++;
+    snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
+    dispRssi = radio->getRSSI();
+    dispSnr = radio->getSNR();
+    
+    displayNeedsUpdate = true;
+    RadioStartListen(radio);
+    return 0;
   }
 }
 

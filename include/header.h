@@ -100,6 +100,18 @@ struct LoRaConfig {
   bool crcMode; // false = CCITT, true = IBM
 };
 
+// Structure encapsulant un paquet reçu et ses métadonnées pour transfert inter-cœur
+struct LoRaPacket {
+  uint8_t data[MAX_FRAME_SIZE];
+  size_t length;
+  int8_t rssi;
+  int8_t snr;
+  uint32_t timestamp;
+  uint8_t ssid_num;
+  uint8_t apid;
+  uint8_t ssid_type;
+};
+
 extern LoRaConfig activeConfig;
 extern ESP32Time rtc;
 extern char logFileName[32];
@@ -108,6 +120,11 @@ extern bool *SDCard;
 extern float dispRssi;
 extern float dispSnr;
 extern bool displayNeedsUpdate;
+
+// Handles FreeRTOS pour la synchronisation et communication multitâche
+extern SemaphoreHandle_t rxSemaphore;
+extern SemaphoreHandle_t radioMutex;
+extern QueueHandle_t rxQueue;
 
 // ============================================================================
 // Prototypes de fonctions
@@ -143,5 +160,9 @@ void sendNectarFrame(uint8_t ssid_type, uint8_t ssid_num, uint8_t apid, const ui
 // Commandes de configuration AT (Série / Bluetooth)
 void checkSerialCommands(SX1276 *radio);
 void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio);
+
+// Tâches FreeRTOS (Dual-Core)
+void vRadioRxTask(void *pvParameters);
+void vIOProcessingTask(void *pvParameters);
 
 #endif // HEADER_H

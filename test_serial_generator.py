@@ -76,7 +76,7 @@ def create_nectar_frame(ssid_type: int, ssid_num: int, apid: int, payload: bytes
     return full_frame
 
 def main():
-    port = sys.argv[1] if len(sys.argv) > 1 else 'COM4'
+    port = sys.argv[1] if len(sys.argv) > 1 else 'COM12'
     baud = 115200
     
     print("==========================================================")

@@ -93,53 +93,52 @@ void setup() {
   // Configuration et démarrage initial du module radio LoRa
   RadioSettings(u8g2, &radio);
 
+  // Création des objets de synchronisation FreeRTOS
+  rxSemaphore = xSemaphoreCreateBinary();
+  radioMutex = xSemaphoreCreateMutex();
+  rxQueue = xQueueCreate(10, sizeof(LoRaPacket));
+
+  if (rxSemaphore == NULL || radioMutex == NULL || rxQueue == NULL) {
+    Serial.println("[SYSTEM] FAILED to create FreeRTOS sync objects!");
+    while (true) { delay(100); }
+  }
+
+  // Création des tâches FreeRTOS et liaison aux cœurs de l'ESP32
+  // Tâche de réception LoRa : Haute priorité, sur le cœur 1 (cœur par défaut de la stack RF)
+  xTaskCreatePinnedToCore(
+    vRadioRxTask,           /* Fonction de la tâche */
+    "RadioRxTask",          /* Nom de la tâche */
+    4096,                   /* Taille de pile (Stack size in bytes) */
+    NULL,                   /* Paramètre d'entrée */
+    3,                      /* Priorité élevée pour réagir à l'interruption */
+    NULL,                   /* Descripteur de tâche */
+    1                       /* Épinglé sur le Cœur 1 */
+  );
+
+  // Tâche de traitement E/S (SD, BT, Série) : Priorité basse, sur le cœur 0
+  xTaskCreatePinnedToCore(
+    vIOProcessingTask,      /* Fonction de la tâche */
+    "IOProcessingTask",     /* Nom de la tâche */
+    8192,                   /* Stack large (8 Ko) indispensable pour pile Bluetooth */
+    NULL,                   /* Paramètre d'entrée */
+    1,                      /* Priorité normale */
+    NULL,                   /* Descripteur de tâche */
+    0                       /* Épinglé sur le Cœur 0 */
+  );
+
+  Serial.println("[SYSTEM] FreeRTOS Multitasking initialized successfully!");
+
   // Premier affichage immédiat des données et du statut de l'écran
   updateDisplay(u8g2, &radio);
 }
 
 /**
  * @brief Boucle d'exécution principale (Orchestrateur).
+ * Gère l'OLED, le diagnostic AT et les mesures secondaires.
  */
 void loop() {
   // Scruter et traiter les commandes AT provenant de l'USB et du Bluetooth
   checkSerialCommands(&radio);
-  
-  // Lecture de la trame radio LoRa reçue par le module
-  receivedLen = RadioReceive(u8g2, &radio, byteArr, MAX_FRAME_SIZE);
-  
-  if (receivedLen > 0) {
-    // La trame minimale valide doit contenir au moins 3 octets : [SSID_NUM] [APID] [SSID_TYPE]
-    if (receivedLen >= 3) {
-      uint8_t ssid_num  = byteArr[0];
-      uint8_t apid      = byteArr[1];
-      uint8_t ssid_type = byteArr[2];
-      
-      const uint8_t* payload = &byteArr[3];
-      size_t payload_len     = receivedLen - 3;
-      
-      // Extraction des métriques de la liaison radio sauvegardées lors de la réception
-      int8_t rssi_val = (int8_t)dispRssi;
-      // Multiplication par 4 pour conserver une résolution de 0.25 dB
-      int8_t snr_val  = (int8_t)(dispSnr * 4.0f);
-      
-      // Transmission de la trame binaire NectarMC (USB et Bluetooth)
-      sendNectarFrame(ssid_type, ssid_num, apid, payload, payload_len, rssi_val, snr_val);
-      
-      // Enregistrement de la trame sur carte SD si elle est disponible
-      if (*SDCard) {
-        const char* ssid_prefix = "OTHER";
-        if (ssid_type == 0) ssid_prefix = "FX";
-        else if (ssid_type == 1) ssid_prefix = "MF";
-        else if (ssid_type == 2) ssid_prefix = "BALLOON";
-        else if (ssid_type == 3) ssid_prefix = "OTHER";
-
-        char ssid_str[32];
-        snprintf(ssid_str, sizeof(ssid_str), "%s%d", ssid_prefix, ssid_num);
-
-        writeFrameToFile(logFileName, byteArr, receivedLen, dispRssi, dispSnr, ssid_str, apid);  
-      }
-    }
-  }
 
   // Mettre à jour l'horloge ou le contenu de l'écran de manière asynchrone non bloquante
   static unsigned long lastUpdate = 0;
@@ -153,6 +152,91 @@ void loop() {
     lastDisplayRefresh = millis();
     updateDisplay(u8g2, &radio);
     displayNeedsUpdate = false;
+  }
+
+  // Laisser du temps aux tâches FreeRTOS de priorité égale ou inférieure
+  delay(10);
+}
+
+/**
+ * @brief Tâche de réception radio haute priorité (Cœur 1).
+ * Attend le sémaphore émis par l'ISR de la radio, extrait le paquet sous Mutex,
+ * puis pousse la structure de paquet dans la file d'attente.
+ */
+void vRadioRxTask(void *pvParameters) {
+  (void)pvParameters;
+  uint8_t rxBuffer[MAX_FRAME_SIZE];
+
+  for (;;) {
+    // Attendre le signal d'interruption LoRa (DIO0)
+    if (xSemaphoreTake(rxSemaphore, portMAX_DELAY) == pdTRUE) {
+      size_t len = 0;
+      int8_t rssi_val = 0;
+      int8_t snr_val = 0;
+
+      // Prendre le mutex radio pour accès exclusif au module SX1276 sur le bus SPI
+      if (xSemaphoreTake(radioMutex, portMAX_DELAY) == pdTRUE) {
+        len = RadioReceive(u8g2, &radio, rxBuffer, MAX_FRAME_SIZE);
+        if (len > 0) {
+          rssi_val = (int8_t)dispRssi;
+          snr_val = (int8_t)(dispSnr * 4.0f);
+        }
+        xSemaphoreGive(radioMutex);
+      }
+
+      // Si le paquet est valide (trame minimale de 3 octets : SSID, APID, Type)
+      if (len >= 3) {
+        LoRaPacket packet;
+        memcpy(packet.data, rxBuffer, len);
+        packet.length = len;
+        packet.rssi = rssi_val;
+        packet.snr = snr_val;
+        packet.timestamp = rtc.getEpoch();
+        packet.ssid_num = rxBuffer[0];
+        packet.apid = rxBuffer[1];
+        packet.ssid_type = rxBuffer[2];
+
+        // Envoyer le paquet dans la file d'attente pour traitement par le cœur 0
+        if (xQueueSend(rxQueue, &packet, 0) != pdTRUE) {
+          Serial.println("[SYSTEM] rxQueue is FULL! Packet dropped.");
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @brief Tâche E/S de traitement de paquets (Cœur 0).
+ * Attend les paquets dans la file d'attente, les formate, les envoie
+ * sur port série/Bluetooth et les enregistre sur carte SD (bus SPI HSPI indépendant).
+ */
+void vIOProcessingTask(void *pvParameters) {
+  (void)pvParameters;
+  LoRaPacket packet;
+
+  for (;;) {
+    // Bloquer jusqu'à ce qu'un paquet LoRa soit disponible
+    if (xQueueReceive(rxQueue, &packet, portMAX_DELAY) == pdTRUE) {
+      
+      // 1. Transmission binaire NectarMC (USB et Bluetooth)
+      const uint8_t* payload = &packet.data[3];
+      size_t payload_len = packet.length - 3;
+      sendNectarFrame(packet.ssid_type, packet.ssid_num, packet.apid, payload, payload_len, packet.rssi, packet.snr);
+
+      // 2. Enregistrement sur la carte SD si elle est disponible
+      if (*SDCard) {
+        const char* ssid_prefix = "OTHER";
+        if (packet.ssid_type == 0) ssid_prefix = "FX";
+        else if (packet.ssid_type == 1) ssid_prefix = "MF";
+        else if (packet.ssid_type == 2) ssid_prefix = "BALLOON";
+        else if (packet.ssid_type == 3) ssid_prefix = "OTHER";
+
+        char ssid_str[32];
+        snprintf(ssid_str, sizeof(ssid_str), "%s%d", ssid_prefix, packet.ssid_num);
+
+        writeFrameToFile(logFileName, packet.data, packet.length, (float)packet.rssi, (float)packet.snr / 4.0f, ssid_str, packet.apid);
+      }
+    }
   }
 }
 #endif
@@ -241,7 +325,12 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
     float val = atof(cmd + 8);
     if (val >= FREQ_MIN && val <= FREQ_MAX) {
       activeConfig.frequency = val;
-      int state = radio->setFrequency(val);
+      int state = RADIOLIB_ERR_UNKNOWN;
+      if (xSemaphoreTake(radioMutex, portMAX_DELAY) == pdTRUE) {
+        state = radio->setFrequency(val);
+        radio->startReceive();
+        xSemaphoreGive(radioMutex);
+      }
       if (state == RADIOLIB_ERR_NONE) {
         responseStream.println("OK");
       } else {
@@ -288,7 +377,12 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
     int val = atoi(cmd + 6);
     if (val >= 6 && val <= 12) {
       activeConfig.spreadingFactor = val;
-      int state = radio->setSpreadingFactor(val);
+      int state = RADIOLIB_ERR_UNKNOWN;
+      if (xSemaphoreTake(radioMutex, portMAX_DELAY) == pdTRUE) {
+        state = radio->setSpreadingFactor(val);
+        radio->startReceive();
+        xSemaphoreGive(radioMutex);
+      }
       if (state == RADIOLIB_ERR_NONE) {
         responseStream.println("OK");
       } else {
@@ -307,7 +401,12 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
     float val = atof(cmd + 6);
     if (val > 0.0f) {
       activeConfig.bandwidth = val;
-      int state = radio->setBandwidth(val);
+      int state = RADIOLIB_ERR_UNKNOWN;
+      if (xSemaphoreTake(radioMutex, portMAX_DELAY) == pdTRUE) {
+        state = radio->setBandwidth(val);
+        radio->startReceive();
+        xSemaphoreGive(radioMutex);
+      }
       if (state == RADIOLIB_ERR_NONE) {
         responseStream.println("OK");
       } else {
@@ -334,7 +433,12 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
         if (numArgs == 2) {
           activeConfig.crcMode = (mode == 1);
         }
-        int state = radio->setCRC(activeConfig.crcEnable, activeConfig.crcMode);
+        int state = RADIOLIB_ERR_UNKNOWN;
+        if (xSemaphoreTake(radioMutex, portMAX_DELAY) == pdTRUE) {
+          state = radio->setCRC(activeConfig.crcEnable, activeConfig.crcMode);
+          radio->startReceive();
+          xSemaphoreGive(radioMutex);
+        }
         if (state == RADIOLIB_ERR_NONE) {
           responseStream.println("OK");
         } else {
