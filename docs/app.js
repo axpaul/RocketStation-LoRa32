@@ -1012,6 +1012,8 @@ function decodeNectarFrame(frame) {
       const gpsFix = (waspStatus & 0x80) !== 0;
       const numSats = waspStatus & 0x1F;
       
+      const isNewWaspTracker = !waspTrackersData[trackerName];
+      
       // Limitation stricte à 10 trackers WASP maximum pour des raisons de performance et de lisibilité
       if (isNewWaspTracker && Object.keys(waspTrackersData).length >= 10) {
         // Trouver le plus ancien tracker basé sur le dernier paquet vu
