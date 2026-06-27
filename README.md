@@ -163,21 +163,21 @@ graph TD
         SignalLoRa ~~~ ConsolePC
     end
 
-    subgraph ESP32 [ESP32 Processing Tasks]
+    subgraph Board [TTGO LoRa32 Board]
         TacheRadio[Radio Task <br/> Core 1 - Prio 3]:::highPrio
         TachePeriph[Peripherals Task <br/> Core 0 - Prio 1]:::normPrio
         TacheEcriture[I/O Write Task <br/> Core 0 - Prio 1]:::normPrio
         PuceLoRa[LoRa Chip SX1276]:::hwStyle
+        OLED[Integrated OLED Screen]:::hwStyle
         
         TacheRadio ~~~ TachePeriph
-        TacheEcriture ~~~ PuceLoRa
+        TacheEcriture ~~~ PuceLoRa ~~~ OLED
     end
 
-    subgraph Outputs [Physical Outputs]
-        CarteSD[SD Card]:::hwStyle
+    subgraph Outputs [External Outputs]
+        CarteSD[SD Card Reader]:::hwStyle
         LogicielPC[NectarMC PC Software]:::hwStyle
-        OLED[OLED Screen]:::hwStyle
-        CarteSD ~~~ LogicielPC ~~~ OLED
+        CarteSD ~~~ LogicielPC
     end
 
     %% Flows
