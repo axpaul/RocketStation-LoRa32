@@ -52,10 +52,10 @@ Pendant le fonctionnement, l'écran est structuré en deux parties :
 
 Les informations détaillées s'affichent sous forme de deux écrans alternant automatiquement toutes les 4 secondes :
 
-| Écran 1 : Infos de la dernière trame | Écran 2 : Configuration & Stats réseau |
-| :---: | :---: |
-| <img src="Image/IMG_1197.jpg" width="300" /> | <img src="Image/IMG_1198.jpg" width="300" /> |
-| **Dernier paquet reçu** : Affiche le SSID décodé, l'APID de l'émetteur, ainsi que le RSSI (dBm) et le SNR (dB) physiques du signal capté. | **Configuration & Débit** : Affiche la fréquence active, le Spreading Factor (SF), la bande passante (BW), le nombre de trackers actifs uniques et le débit de données instantané. |
+| Écran 1 : Infos de la dernière trame                                                                                                      | Écran 2 : Configuration & Stats réseau                                                                                                    |
+| :---------------------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------: |
+| <img src="Image/IMG_1197.jpg" width="300" />                                                                                              | <img src="Image/IMG_1198.jpg" width="300" />                                                                                              |
+| **Dernier paquet reçu** : Affiche le SSID décodé, l'APID de l'émetteur, ainsi que le RSSI (dBm) et le SNR (dB) physiques du signal capté. | **Configuration & Débit** : Affiche la fréquence active, le Spreading Factor (SF), la bande passante (BW), les trackers et le débit.     |
 
 ---
 
@@ -93,29 +93,29 @@ Chaque commande doit se terminer par un retour chariot (`\n` ou `\r`). Les répo
 
 ### Liste des commandes AT disponibles
 
-| Commande | Rôle | Format de Réponse & Exemples |
-| :--- | :--- | :--- |
-| **`AT`** | Teste la communication avec la station | `OK` |
-| **`AT+HELP`** ou **`AT?`** | Affiche la liste d'aide de toutes les commandes AT | Renvoie la liste complète des commandes supportées suivie de `OK` |
-| **`AT+INFO`** ou **`AT+VER`** | Interroge l'identification de la station et sa version | Renvoie `+INFO: NECTAR RX STATION,FW=1.5.0,Band=868` (ou `433`) suivi de `OK` |
-| **`AT+FREQ=<val>`** | Modifie la fréquence LoRa active (en MHz) | Ex: `AT+FREQ=869.525`. Renvoie `OK` ou `ERROR`. |
-| **`AT+FREQ?`** | Interroge la fréquence active | Renvoie `+FREQ: 869.525` suivi de `OK` |
-| **`AT+SF=<val>`** | Modifie le Spreading Factor LoRa | De `6` à `12`. Ex: `AT+SF=8`. Renvoie `OK` ou `ERROR`. |
-| **`AT+SF?`** | Interroge le Spreading Factor actif | Renvoie `+SF: 8` suivi de `OK` |
-| **`AT+BW=<val>`** | Modifie la bande passante LoRa (en kHz) | Valeur $> 0$. Ex: `AT+BW=250.0`. Renvoie `OK` ou `ERROR`. |
-| **`AT+BW?`** | Interroge la bande passante active | Renvoie `+BW: 250.0` suivi de `OK` |
-| **`AT+CRC=<val>`** | Active (`1`) ou désactive (`0`) le CRC matériel du SX1276.<br>Paramètre facultatif de mode : `0` = CCITT, `1` = IBM. | Ex: `AT+CRC=1,0`. Renvoie `OK` ou `ERROR`. |
-| **`AT+CRC?`** | Interroge l'état et le mode du CRC matériel actif | Renvoie `+CRC: <activé>,<mode>` suivi de `OK` (ex: `+CRC: 1,0`) |
-| **`AT+TIME=<epoch>`** | Configure l'heure RTC de la station (Epoch Unix en secondes) | Ex: `AT+TIME=1781290382`. Renvoie `OK`. |
-| **`AT+TIME?`** | Interroge l'horloge RTC de la station (Epoch Unix en secondes) | Renvoie `+TIME: 1781290382` suivi de `OK`. |
-| **`AT+RSSI?`** | Interroge le RSSI du dernier paquet reçu (en dBm) | Renvoie `+RSSI: -85.0` suivi de `OK`. |
-| **`AT+SNR?`** | Interroge le SNR du dernier paquet reçu (en dB) | Renvoie `+SNR: 9.5` suivi de `OK`. |
-| **`AT+SIG?`** | Interroge à la fois le RSSI et le SNR du dernier paquet reçu | Renvoie `+SIG: RSSI=-85.0, SNR=9.5` suivi de `OK`. |
-| **`AT+LIST`** | Liste tous les fichiers CSV de log présents sur la carte SD | Renvoie les fichiers sous la forme `+LIST: <chemin>,<taille>` suivi de `OK` |
-| **`AT+DUMP=<file>`** | Transmet en direct le contenu textuel d'un fichier CSV de log | Renvoie le flux encadré par `+DUMP: START` et `+DUMP: END` suivi de `OK` |
-| **`AT+CFG`** ou **`AT+STATUS`** | Affiche le rapport complet de la configuration | Affiche la version, la bande native, les limites, les réglages actifs, l'état de la SD et du Bluetooth, suivi de `OK`. |
-| **`AT+SAVE`** | Persiste la configuration active dans la Flash (NVS) | Renvoie `OK`. Elle sera rechargée automatiquement au boot. |
-| **`AT+RESET`** | Efface la configuration personnalisée et redémarre | Renvoie `OK`, puis réinitialise la carte aux paramètres d'usine. |
+| Commande                      | Rôle                                                                                      | Format de Réponse & Exemples                                                                           |
+| :---------------------------- | :---------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- |
+| **`AT`**                      | Teste la communication avec la station                                                    | `OK`                                                                                                   |
+| **`AT+HELP`** ou **`AT?`**    | Affiche la liste d'aide de toutes les commandes AT                                        | Renvoie la liste complète des commandes supportées suivie de `OK`                                      |
+| **`AT+INFO`** ou **`AT+VER`**  | Interroge l'identification de la station et sa version                                    | Renvoie `+INFO: NECTAR RX STATION,FW=1.5.0,Band=868` (ou `433`) suivie de `OK`                         |
+| **`AT+FREQ=<val>`**            | Modifie la fréquence LoRa active (en MHz)                                                 | Ex: `AT+FREQ=869.525`. Renvoie `OK` ou `ERROR`.                                                        |
+| **`AT+FREQ?`**                | Interroge la fréquence active                                                             | Renvoie `+FREQ: 869.525` suivi de `OK`                                                                 |
+| **`AT+SF=<val>`**              | Modifie le Spreading Factor LoRa                                                          | De `6` à `12`. Ex: `AT+SF=8`. Renvoie `OK` ou `ERROR`.                                                 |
+| **`AT+SF?`**                  | Interroge le Spreading Factor actif                                                       | Renvoie `+SF: 8` suivi de `OK`                                                                         |
+| **`AT+BW=<val>`**              | Modifie la bande passante LoRa (en kHz)                                                   | Valeur > 0. Ex: `AT+BW=250.0`. Renvoie `OK` ou `ERROR`.                                                |
+| **`AT+BW?`**                  | Interroge la bande passante active                                                        | Renvoie `+BW: 250.0` suivi de `OK`                                                                     |
+| **`AT+CRC=<val>`**            | Active (`1`) ou désactive (`0`) le CRC matériel du SX1276.<br>Mode: 0=CCITT, 1=IBM.       | Ex: `AT+CRC=1,0`. Renvoie `OK` ou `ERROR`.                                                             |
+| **`AT+CRC?`**                 | Interroge l'état et le mode du CRC matériel actif                                         | Renvoie `+CRC: <activé>,<mode>` suivi de `OK` (ex: `+CRC: 1,0`)                                        |
+| **`AT+TIME=<epoch>`**          | Configure l'heure RTC de la station (Epoch Unix en secondes)                              | Ex: `AT+TIME=1781290382`. Renvoie `OK`.                                                                |
+| **`AT+TIME?`**                | Interroge l'horloge RTC de la station (Epoch Unix en secondes)                            | Renvoie `+TIME: 1781290382` suivi de `OK`.                                                             |
+| **`AT+RSSI?`**                | Interroge le RSSI du dernier paquet reçu (en dBm)                                         | Renvoie `+RSSI: -85.0` suivi de `OK`.                                                                  |
+| **`AT+SNR?`**                 | Interroge le SNR du dernier paquet reçu (en dB)                                           | Renvoie `+SNR: 9.5` suivi de `OK`.                                                                     |
+| **`AT+SIG?`**                 | Interroge à la fois le RSSI et le SNR du dernier paquet reçu                              | Renvoie `+SIG: RSSI=-85.0, SNR=9.5` suivi de `OK`.                                                     |
+| **`AT+LIST`**                 | Liste tous les fichiers CSV de log présents sur la carte SD                               | Renvoie les fichiers sous la forme `+LIST: <chemin>,<taille>` suivi de `OK`                            |
+| **`AT+DUMP=<file>`**          | Transmet en direct le contenu textuel d'un fichier CSV de log                             | Renvoie le flux encadré par `+DUMP: START` et `+DUMP: END` suivi de `OK`                               |
+| **`AT+CFG`** ou **`AT+STATUS`**| Affiche le rapport complet de la configuration                                            | Affiche version, bande, limites, réglages, état SD, BT et la pile libre, suivi de `OK`.               |
+| **`AT+SAVE`**                 | Persiste la configuration active dans la Flash (NVS)                                      | Renvoie `OK`. Elle sera rechargée automatiquement au boot.                                             |
+| **`AT+RESET`**                | Efface la configuration personnalisée et redémarre                                        | Renvoie `OK`, puis réinitialise la carte aux paramètres d'usine.                                       |
 
 ### Retours d'erreurs et statuts
 
@@ -160,19 +160,24 @@ graph TD
     subgraph Inputs [Physical Inputs]
         SignalLoRa[Rocket LoRa Signal]:::inputStyle
         ConsolePC[PC AT Commands]:::inputStyle
+        SignalLoRa ~~~ ConsolePC
     end
 
     subgraph ESP32 [ESP32 Processing Tasks]
         TacheRadio[Radio Task <br/> Core 1 - Prio 3]:::highPrio
-        TacheEcriture[I/O Write Task <br/> Core 0 - Prio 1]:::normPrio
         TachePeriph[Peripherals Task <br/> Core 0 - Prio 1]:::normPrio
+        TacheEcriture[I/O Write Task <br/> Core 0 - Prio 1]:::normPrio
         PuceLoRa[LoRa Chip SX1276]:::hwStyle
+        
+        TacheRadio ~~~ TachePeriph
+        TacheEcriture ~~~ PuceLoRa
     end
 
     subgraph Outputs [Physical Outputs]
         CarteSD[SD Card]:::hwStyle
         LogicielPC[NectarMC PC Software]:::hwStyle
         OLED[OLED Screen]:::hwStyle
+        CarteSD ~~~ LogicielPC ~~~ OLED
     end
 
     %% Flows
