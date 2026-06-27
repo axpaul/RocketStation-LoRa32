@@ -157,22 +157,38 @@ graph TD
     classDef hwStyle fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff;
     classDef inputStyle fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff;
 
-    %% 1. Inputs (Incoming data to the station)
-    SignalLoRa[Rocket LoRa Signal]:::inputStyle -->|1. Triggers interrupt| TacheRadio[Radio Task <br/> Core 1 - Prio 3]:::highPrio
-    ConsolePC[PC AT Commands]:::inputStyle -->|2. USB/Bluetooth Input| TachePeriph[Peripherals Task <br/> Core 0 - Prio 1]:::normPrio
+    subgraph Inputs [Physical Inputs]
+        SignalLoRa[Rocket LoRa Signal]:::inputStyle
+        ConsolePC[PC AT Commands]:::inputStyle
+    end
 
-    %% 2. Tasks inside the ESP32
-    TacheRadio -->|3. Reads data| PuceLoRa[LoRa Chip SX1276]:::hwStyle
-    TacheRadio -->|4. Transmits via Queue| TacheEcriture[I/O Write Task <br/> Core 0 - Prio 1]:::normPrio
+    subgraph ESP32 [ESP32 Processing Tasks]
+        TacheRadio[Radio Task <br/> Core 1 - Prio 3]:::highPrio
+        TacheEcriture[I/O Write Task <br/> Core 0 - Prio 1]:::normPrio
+        TachePeriph[Peripherals Task <br/> Core 0 - Prio 1]:::normPrio
+        PuceLoRa[LoRa Chip SX1276]:::hwStyle
+    end
 
-    %% 3. Outputs (Written by the station)
-    TacheEcriture -->|5a. Saves to| CarteSD[SD Card]:::hwStyle
-    TacheEcriture -->|5b. Sends telemetry| LogicielPC[NectarMC PC Software]:::hwStyle
+    subgraph Outputs [Physical Outputs]
+        CarteSD[SD Card]:::hwStyle
+        LogicielPC[NectarMC PC Software]:::hwStyle
+        OLED[OLED Screen]:::hwStyle
+    end
+
+    %% Flows
+    SignalLoRa -->|Triggers interrupt| TacheRadio
+    ConsolePC -->|USB/Bluetooth Input| TachePeriph
+
+    TacheRadio -->|Reads data| PuceLoRa
+    TacheRadio -->|Transmits via Queue| TacheEcriture
+
+    TacheEcriture -->|Saves to| CarteSD
+    TacheEcriture -->|Sends telemetry| LogicielPC
     
-    TachePeriph -->|6. Draws to| OLED[OLED Screen]:::hwStyle
-    TachePeriph -->|7. Applies config| PuceLoRa
+    TachePeriph -->|Draws to| OLED
+    TachePeriph -->|Applies config| PuceLoRa
 
-    %% 4. Security Lock
+    %% Security Lock
     PuceLoRa -.->|Protected by radioMutex| TacheRadio
     PuceLoRa -.->|Protected by radioMutex| TachePeriph
 ```
