@@ -48,7 +48,7 @@
       </div>
       <div>
         <h1 data-i18n="header_title">NECTAR RX STATION</h1>
-        <p class="subtitle" data-i18n="header_subtitle">Web Control Center v1.3.1</p>
+        <p class="subtitle" data-i18n="header_subtitle">Web Control Center v1.6.0</p>
       </div>
     </div>
     <div class="header-right">
@@ -76,7 +76,7 @@
         <div class="form-group">
           <label for="select-fw-version" data-i18n="conn_fw_version">Version Décodeur / Trame :</label>
           <select id="select-fw-version">
-            <option value="1.4.0" selected>v1.4.0 (Avec Timestamp)</option>
+            <option value="1.6.0" selected>v1.6.0 / v1.5.0 / v1.4.0 (Avec Timestamp)</option>
             <option value="1.3.1">v1.3.1 (Sans Timestamp)</option>
           </select>
         </div>
@@ -226,7 +226,7 @@
         <!-- Sub-section 1: Firmware Update -->
         <div class="maintenance-section" style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 1.2rem;">
           <h3 style="font-size: 0.9rem; color: var(--color-primary); margin-bottom: 0.5rem; font-weight: 600;" data-i18n="flash_title">⚡ Mise à Jour Firmware</h3>
-          <p class="description" style="margin-bottom: 0.8rem;" data-i18n="flash_desc">Flashez directement la version <strong>v1.3.1</strong> depuis votre navigateur par port USB.</p>
+          <p class="description" style="margin-bottom: 0.8rem;" data-i18n="flash_desc">Flashez directement la version <strong>v1.6.0</strong> depuis votre navigateur par port USB.</p>
           <div class="form-group" style="margin-bottom: 0.8rem;">
             <label for="select-band" data-i18n="flash_band">Bande Radio native de la carte :</label>
             <select id="select-band">
@@ -234,7 +234,7 @@
               <option value="433" data-i18n="flash_band_433">433 MHz</option>
             </select>
           </div>
-          <button id="btn-flash" class="btn btn-primary" style="width: 100%;" data-i18n="flash_btn_flash">Flasher la carte (v1.3.1)</button>
+          <button id="btn-flash" class="btn btn-primary" style="width: 100%;" data-i18n="flash_btn_flash">Flasher la carte (v1.6.0)</button>
           
           <div id="flash-progress-container" class="progress-container hidden" style="margin-top: 0.8rem;">
             <div class="progress-bar-wrapper">
@@ -349,13 +349,23 @@
         <h2 data-i18n="terminal_title">📟 Console & Terminal</h2>
         <button id="btn-clear-terminal" class="btn btn-secondary btn-sm" data-i18n="btn_clear">Effacer</button>
       </div>
-      <div class="card-content terminal-content">
-        <div id="terminal-logs" class="terminal-view"></div>
-        <form id="terminal-form" class="terminal-input-row">
-          <span class="prompt">&gt;</span>
-          <input type="text" id="terminal-input" data-i18n-placeholder="terminal_placeholder" placeholder="Tapez une commande AT (ex: AT, AT+FREQ?, AT+CFG)..." disabled>
-          <button type="submit" id="btn-send" class="btn btn-secondary" data-i18n="btn_send" disabled>Envoyer</button>
-        </form>
+      <div class="card-content terminal-dashboard">
+        <div class="terminal-log-section">
+          <div id="terminal-logs" class="terminal-view"></div>
+          <form id="terminal-form" class="terminal-input-row">
+            <span class="prompt">&gt;</span>
+            <input type="text" id="terminal-input" data-i18n-placeholder="terminal_placeholder" placeholder="Tapez une commande AT (ex: AT, AT+FREQ?, AT+CFG)..." disabled>
+            <button type="submit" id="btn-send" class="btn btn-secondary" data-i18n="btn_send" disabled>Envoyer</button>
+          </form>
+        </div>
+        <div class="at-helper-panel">
+          <div class="at-helper-header">
+            <span class="at-helper-title" data-i18n="at_helper_title">📋 Aide-Mémoire AT</span>
+          </div>
+          <div class="at-helper-list" id="at-helper-list">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -364,6 +374,6 @@
     <p>&copy; 2026 Nectar Project - <span data-i18n="footer_credit">Conçu et développé par</span> <a href="https://github.com/axpaul" target="_blank" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">Paul Miailhe (axpaul)</a> | <a href="https://github.com/axpaul/Nectar-RxStation-LoRa32" target="_blank" style="color: var(--color-cyan); text-decoration: none; font-weight: 600; margin: 0 5px;">GitHub</a> | <a href="https://github.com/mlavardin/NectarMC" target="_blank" style="color: var(--color-accent); text-decoration: none; font-weight: 600; margin-left: 5px;">NectarMC</a></p>
   </footer>
 
-  <script type="module" src="app.js?v=1.5.0-opt-crc"></script>
+  <script type="module" src="app.js?v=1.6.0"></script>
 </body>
 </html>

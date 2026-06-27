@@ -48,11 +48,33 @@ const i18n = {
     badge_disconnected: "Déconnecté",
     badge_connected: "Connecté",
     header_title: "NECTAR RX STATION",
-    header_subtitle: "Web Control Center v1.5.0",
+    header_subtitle: "Web Control Center v1.6.0",
     conn_title: "🔌 Liaison Série USB",
     maintenance_title: "🛠️ Outils & Maintenance",
     sd_title: "📁 Journaux Carte SD",
     sd_desc: "Listez et téléchargez directement les fichiers CSV de vol enregistrés sur la carte SD.",
+    at_helper_title: "📋 Aide-Mémoire AT",
+    at_desc_at: "Test de communication avec la station",
+    at_desc_help: "Afficher le menu d'aide complet",
+    at_desc_info: "Interroger l'identification de la station",
+    at_desc_freq_get: "Interroger la fréquence active",
+    at_desc_freq_set: "Configurer la fréquence LoRa (en MHz)",
+    at_desc_sf_get: "Interroger le Spreading Factor",
+    at_desc_sf_set: "Configurer le Spreading Factor (6-12)",
+    at_desc_bw_get: "Interroger la bande passante",
+    at_desc_bw_set: "Configurer la bande passante (kHz)",
+    at_desc_crc_get: "Interroger le statut du CRC",
+    at_desc_crc_set: "Configurer le CRC (0=OFF, 1=ON [,mode])",
+    at_desc_time_get: "Interroger l'heure RTC de la station",
+    at_desc_time_set: "Configurer l'heure RTC (Unix Epoch)",
+    at_desc_rssi_get: "RSSI du dernier paquet reçu",
+    at_desc_snr_get: "SNR du dernier paquet reçu",
+    at_desc_sig_get: "RSSI et SNR du dernier paquet",
+    at_desc_cfg: "Obtenir la configuration détaillée",
+    at_desc_list: "Lister les fichiers CSV sur la carte SD",
+    at_desc_dump: "Afficher/télécharger un fichier CSV",
+    at_desc_save: "Sauvegarder la config active en NVS",
+    at_desc_reset: "Reset d'usine et redémarrage",
     sd_btn_list: "Lister les fichiers",
     sd_th_name: "Nom",
     sd_th_size: "Taille",
@@ -89,11 +111,11 @@ const i18n = {
     stats_count: "Trames (Reçues / KO)",
     stats_crc_errors: "Erreurs CRC",
     flash_title: "⚡ Mise à Jour Firmware",
-    flash_desc: "Flashez directement la version <strong>v1.3.1</strong> depuis votre navigateur par port USB.",
+    flash_desc: "Flashez directement la version <strong>v1.6.0</strong> depuis votre navigateur par port USB.",
     flash_band: "Bande Radio native de la carte :",
     flash_band_868: "868 MHz (Europe)",
     flash_band_433: "433 MHz",
-    flash_btn_flash: "Flasher la carte (v1.3.1)",
+    flash_btn_flash: "Flasher la carte (v1.6.0)",
     flash_status_label: "Statut :",
     flash_status_waiting: "Attente...",
     trackers_title: "🛸 Émetteurs Détectés (Active Trackers)",
@@ -167,11 +189,33 @@ const i18n = {
     badge_disconnected: "Disconnected",
     badge_connected: "Connected",
     header_title: "NECTAR RX STATION",
-    header_subtitle: "Web Control Center v1.5.0",
+    header_subtitle: "Web Control Center v1.6.0",
     conn_title: "🔌 USB Serial Link",
     maintenance_title: "🛠️ Tools & Maintenance",
     sd_title: "📁 SD Card Logs",
     sd_desc: "List and download flight CSV files recorded on the SD card.",
+    at_helper_title: "📋 AT Command Cheatsheet",
+    at_desc_at: "Test communication with the station",
+    at_desc_help: "Print the complete help menu",
+    at_desc_info: "Query station identification",
+    at_desc_freq_get: "Query the active frequency",
+    at_desc_freq_set: "Set the LoRa frequency (in MHz)",
+    at_desc_sf_get: "Query the Spreading Factor",
+    at_desc_sf_set: "Set the Spreading Factor (6-12)",
+    at_desc_bw_get: "Query the bandwidth",
+    at_desc_bw_set: "Set the bandwidth (kHz)",
+    at_desc_crc_get: "Query CRC status",
+    at_desc_crc_set: "Set CRC (0=OFF, 1=ON [,mode])",
+    at_desc_time_get: "Query the station's RTC time",
+    at_desc_time_set: "Set the RTC time (Unix Epoch)",
+    at_desc_rssi_get: "RSSI of the last received packet",
+    at_desc_snr_get: "SNR of the last received packet",
+    at_desc_sig_get: "RSSI and SNR of the last packet",
+    at_desc_cfg: "Get detailed configuration",
+    at_desc_list: "List CSV log files on the SD card",
+    at_desc_dump: "Print/download a CSV file",
+    at_desc_save: "Save active configuration to NVS",
+    at_desc_reset: "Factory reset and reboot",
     sd_btn_list: "List Files",
     sd_th_name: "Name",
     sd_th_size: "Size",
@@ -208,11 +252,11 @@ const i18n = {
     stats_count: "Frames (Received / KO)",
     stats_crc_errors: "CRC Errors",
     flash_title: "⚡ Firmware Update",
-    flash_desc: "Flash version <strong>v1.3.1</strong> directly from your browser via USB port.",
+    flash_desc: "Flash version <strong>v1.6.0</strong> directly from your browser via USB port.",
     flash_band: "Board's native Radio Band:",
     flash_band_868: "868 MHz (Europe)",
     flash_band_433: "433 MHz",
-    flash_btn_flash: "Flash Board (v1.3.1)",
+    flash_btn_flash: "Flash Board (v1.6.0)",
     flash_status_label: "Status:",
     flash_status_waiting: "Waiting...",
     trackers_title: "🛸 Detected Transmitters (Active Trackers)",
@@ -336,6 +380,7 @@ function setLanguage(lang) {
   updateConnectionUI(isConnected, currentPortName);
   renderTelemetryTable();
   updateTrackersTable();
+  renderAtHelperList();
 }
 
 // ============================================================================
@@ -683,6 +728,54 @@ function parseRxBuffer() {
       }
     }
   }
+}
+
+// Rendu dynamique de la liste d'aide-mémoire AT
+function renderAtHelperList() {
+  const container = document.getElementById('at-helper-list');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  const AT_COMMANDS_HELP = [
+    { cmd: "AT", descKey: "at_desc_at" },
+    { cmd: "AT+HELP", descKey: "at_desc_help" },
+    { cmd: "AT+INFO", descKey: "at_desc_info" },
+    { cmd: "AT+FREQ?", descKey: "at_desc_freq_get" },
+    { cmd: "AT+FREQ=", descKey: "at_desc_freq_set" },
+    { cmd: "AT+SF?", descKey: "at_desc_sf_get" },
+    { cmd: "AT+SF=", descKey: "at_desc_sf_set" },
+    { cmd: "AT+BW?", descKey: "at_desc_bw_get" },
+    { cmd: "AT+BW=", descKey: "at_desc_bw_set" },
+    { cmd: "AT+CRC?", descKey: "at_desc_crc_get" },
+    { cmd: "AT+CRC=", descKey: "at_desc_crc_set" },
+    { cmd: "AT+TIME?", descKey: "at_desc_time_get" },
+    { cmd: "AT+TIME=", descKey: "at_desc_time_set" },
+    { cmd: "AT+RSSI?", descKey: "at_desc_rssi_get" },
+    { cmd: "AT+SNR?", descKey: "at_desc_snr_get" },
+    { cmd: "AT+SIG?", descKey: "at_desc_sig_get" },
+    { cmd: "AT+CFG", descKey: "at_desc_cfg" },
+    { cmd: "AT+LIST", descKey: "at_desc_list" },
+    { cmd: "AT+DUMP=", descKey: "at_desc_dump" },
+    { cmd: "AT+SAVE", descKey: "at_desc_save" },
+    { cmd: "AT+RESET", descKey: "at_desc_reset" }
+  ];
+
+  AT_COMMANDS_HELP.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'at-helper-item';
+    el.innerHTML = `
+      <span class="at-helper-cmd">${item.cmd}</span>
+      <span class="at-helper-desc">${getTranslation(item.descKey)}</span>
+    `;
+    el.addEventListener('click', () => {
+      const input = document.getElementById('terminal-input');
+      if (input) {
+        input.value = item.cmd;
+        input.focus();
+      }
+    });
+    container.appendChild(el);
+  });
 }
 
 // Rendu dynamique du tableau de télémétrie (gère le changement de langue)
