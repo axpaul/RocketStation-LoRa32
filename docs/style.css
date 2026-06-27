@@ -962,3 +962,124 @@ footer {
     padding: 1.5rem 1rem;
   }
 }
+
+/* 🚀 WASP Cockpit Styling */
+.wasp-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.wasp-mini-stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1rem;
+  width: 100%;
+}
+
+.wasp-stat-box {
+  background: rgba(10, 13, 22, 0.6);
+  border: 1px solid var(--bg-card-border);
+  border-radius: 8px;
+  padding: 1.2rem 0.8rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.wasp-stat-box::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--color-primary);
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
+}
+
+.wasp-stat-box:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.4);
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.1);
+}
+
+.wasp-stat-box:hover::after {
+  opacity: 1;
+}
+
+.wasp-stat-val {
+  font-family: var(--font-sans);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--color-cyan);
+  margin-bottom: 0.4rem;
+  text-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+}
+
+.wasp-stat-lbl {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+/* Leaflet Customizations for Dark Mode */
+.leaflet-container {
+  background: #0d111a !important;
+  font-family: var(--font-sans) !important;
+}
+
+/* Adjust zoom control buttons to match cockpit design */
+.leaflet-bar {
+  border: 1px solid var(--bg-card-border) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+.leaflet-bar a {
+  background-color: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border-bottom: 1px solid var(--bg-card-border) !important;
+  transition: all 0.2s ease !important;
+}
+
+.leaflet-bar a:hover {
+  background-color: var(--bg-card-border) !important;
+  color: var(--color-cyan) !important;
+}
+
+.leaflet-control-attribution {
+  background: rgba(10, 13, 22, 0.8) !important;
+  color: var(--text-secondary) !important;
+  border-top-left-radius: 4px;
+  border-left: 1px solid var(--bg-card-border);
+  border-top: 1px solid var(--bg-card-border);
+}
+
+.leaflet-control-attribution a {
+  color: var(--color-cyan) !important;
+}
+
+/* Responsiveness for WASP Cockpit */
+@media (max-width: 1024px) {
+  .wasp-mini-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .wasp-mini-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .wasp-stat-val {
+    font-size: 1.3rem;
+  }
+}
+

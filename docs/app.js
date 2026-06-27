@@ -42,6 +42,11 @@ const maxChartPoints = 30;
 const rssiHistory = []; // { value, time }
 const snrHistory = [];  // { value, time }
 
+// Variables globales pour la télémétrie WASP et la carte Leaflet
+let waspMap = null;
+let waspMarker = null;
+let waspLastPos = null; // Stockage de la dernière position valide {lat, lon}
+
 // Dictionnaire de traduction
 const i18n = {
   fr: {
@@ -94,6 +99,9 @@ const i18n = {
     conn_no_device: "Aucun appareil connecté",
     conn_port_prefix: "Port : ",
     conn_voice_alerts: "🎙️ Synthèse Vocale (Alertes Tracker)",
+    conn_wasp_decoding: "🐝 Activer décodeur WASP (32B)",
+    wasp_title: "🚀 Télémétrie Wasp Décryptée",
+    wasp_map_title: "🗺️ Position GPS Live",
     config_title: "⚙️ Paramètres Radio",
     config_frequency: "Fréquence (MHz) :",
     config_sf: "Spreading Factor (SF) :",
@@ -235,6 +243,9 @@ const i18n = {
     conn_no_device: "No device connected",
     conn_port_prefix: "Port: ",
     conn_voice_alerts: "🎙️ Voice Synthesis (Tracker Alerts)",
+    conn_wasp_decoding: "🐝 Enable WASP Decoder (32B)",
+    wasp_title: "🚀 Decrypted Wasp Telemetry",
+    wasp_map_title: "🗺️ Live GPS Position",
     config_title: "⚙️ Radio Settings",
     config_frequency: "Frequency (MHz):",
     config_sf: "Spreading Factor (SF):",
@@ -970,6 +981,74 @@ function decodeNectarFrame(frame) {
   
   updateTrackersTable();
 
+  // Décodage optionnel de la charge utile WASP (32 octets)
+  const chkWaspDecoding = document.getElementById('chk-wasp-decoding');
+  if (chkWaspDecoding && chkWaspDecoding.checked && payloadSize === 32) {
+    try {
+      const buffer = new ArrayBuffer(32);
+      const view = new DataView(buffer);
+      for (let i = 0; i < 32; i++) {
+        view.setUint8(i, payload[i]);
+      }
+      
+      const waspId = view.getUint8(0);
+      const waspApid = view.getUint8(1);
+      const waspType = view.getUint8(2);
+      const waspUtc = view.getUint32(3, true);
+      const waspLat = view.getFloat32(7, true);
+      const waspLon = view.getFloat32(11, true);
+      const waspAlt = view.getFloat32(15, true);
+      const waspSpd = view.getFloat32(19, true);
+      const waspCog = view.getFloat32(23, true);
+      const waspVbat = view.getUint16(27, true);
+      const waspTemp = view.getInt16(29, true);
+      const waspStatus = view.getUint8(31);
+      
+      const gpsFix = (waspStatus & 0x80) !== 0;
+      const numSats = waspStatus & 0x1F;
+      
+      // Mettre à jour les widgets
+      const txtAlt = document.getElementById('wasp-alt');
+      const txtSpd = document.getElementById('wasp-spd');
+      const txtSats = document.getElementById('wasp-sats');
+      const txtTemp = document.getElementById('wasp-temp');
+      const txtVbat = document.getElementById('wasp-vbat');
+      const txtSignal = document.getElementById('wasp-signal');
+      
+      if (txtAlt) txtAlt.textContent = waspAlt.toFixed(1) + ' m';
+      if (txtSpd) txtSpd.textContent = waspSpd.toFixed(1) + ' km/h';
+      if (txtSats) txtSats.textContent = (gpsFix ? '🟢 ' : '🔴 ') + numSats;
+      if (txtTemp) txtTemp.textContent = (waspTemp / 100).toFixed(2) + ' °C';
+      if (txtVbat) txtVbat.textContent = (waspVbat / 1000).toFixed(2) + ' V';
+      if (txtSignal) txtSignal.textContent = `${rssi} / ${snr}`;
+      
+      // Si la position GPS est valide, on l'affiche sur la carte Leaflet
+      if (waspLat !== 0 && waspLon !== 0 && Math.abs(waspLat) <= 90 && Math.abs(waspLon) <= 180) {
+        waspLastPos = { lat: waspLat, lon: waspLon };
+        if (waspMap && waspMarker) {
+          const pos = [waspLat, waspLon];
+          waspMarker.setLatLng(pos);
+          
+          const timeStr = waspUtc > 0 ? new Date(waspUtc * 1000).toLocaleTimeString() : 'Inconnue';
+          
+          waspMarker.setPopupContent(`
+            <b>Tracker WASP [ID: ${waspId}]</b><br>
+            Altitude: ${waspAlt.toFixed(1)} m<br>
+            Vitesse: ${waspSpd.toFixed(1)} km/h<br>
+            Cap (COG): ${waspCog.toFixed(1)}°<br>
+            GPS Fix: ${gpsFix ? 'Fix valide' : 'Pas de fix'}<br>
+            Heure GPS: ${timeStr}
+          `);
+          
+          // Suivre la position sur la carte
+          waspMap.setView(pos, waspMap.getZoom() < 10 ? 14 : waspMap.getZoom());
+        }
+      }
+    } catch (e) {
+      console.error("Erreur de décodage de la charge utile WASP:", e);
+    }
+  }
+
   // Mettre à jour les indicateurs
   if (statCount) {
     statCount.textContent = packetIndex;
@@ -1591,6 +1670,60 @@ const btnLangFr = document.getElementById('btn-lang-fr');
 const btnLangEn = document.getElementById('btn-lang-en');
 if (btnLangFr) btnLangFr.addEventListener('click', () => setLanguage('fr'));
 if (btnLangEn) btnLangEn.addEventListener('click', () => setLanguage('en'));
+
+// Initialisation de la carte Leaflet WASP
+function initWaspMap() {
+  if (waspMap) return; // Déjà initialisée
+  
+  // Coordonnées par défaut au centre de la France
+  const defaultLat = 46.2276;
+  const defaultLon = 2.2137;
+  
+  waspMap = L.map('wasp-map').setView([defaultLat, defaultLon], 5);
+  
+  // Utilisation de la tuile Dark Matter de CartoDB pour correspondre au design sombre
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    maxZoom: 20
+  }).addTo(waspMap);
+  
+  // Création du marqueur avec une popup descriptive
+  waspMarker = L.marker([defaultLat, defaultLon]).addTo(waspMap);
+  waspMarker.bindPopup("<b>Position Wasp</b><br>Attente de données GPS...").openPopup();
+}
+
+// Écouteur d'état pour le mode décodeur WASP
+const chkWaspDecoding = document.getElementById('chk-wasp-decoding');
+const waspSection = document.getElementById('wasp-section');
+
+if (chkWaspDecoding) {
+  chkWaspDecoding.addEventListener('change', () => {
+    if (chkWaspDecoding.checked) {
+      if (waspSection) {
+        waspSection.classList.remove('hidden');
+        // Initialise la carte si ce n'est pas déjà fait
+        initWaspMap();
+        // Permet à Leaflet de recalculer sa taille après que le conteneur soit affiché
+        setTimeout(() => {
+          if (waspMap) {
+            waspMap.invalidateSize();
+            // Centrer sur la dernière position si elle existe
+            if (waspLastPos) {
+              waspMap.setView([waspLastPos.lat, waspLastPos.lon], 13);
+            }
+          }
+        }, 150);
+        
+        // Scroll fluide vers la section Wasp
+        waspSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      if (waspSection) {
+        waspSection.classList.add('hidden');
+      }
+    }
+  });
+}
 
 // Initialisation de la langue au chargement de la page
 const savedLang = localStorage.getItem('nectar_lang');
