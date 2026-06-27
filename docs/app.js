@@ -46,6 +46,8 @@ const snrHistory = [];  // { value, time }
 let waspMap = null;
 let waspMarkers = {}; // Dictionnaire des marqueurs Leaflet par tracker (ex: { "FX3": marker })
 let waspTrackersData = {}; // Dictionnaire des données WASP reçues par tracker (ex: { "FX3": { alt, spd, ... } })
+let waspTrajectories = {}; // Coordonnées des trajectoires par tracker (ex: { "FX3": [[lat, lon], ...] })
+let waspPolylines = {}; // Objets L.polyline par tracker (ex: { "FX3": polyline })
 let activeWaspTrackerName = ""; // Nom de l'émetteur WASP actuellement sélectionné pour le cockpit
 let waspLastPos = null; // Stockage de la dernière position valide globale pour recentrage
 
@@ -1010,8 +1012,48 @@ function decodeNectarFrame(frame) {
       const gpsFix = (waspStatus & 0x80) !== 0;
       const numSats = waspStatus & 0x1F;
       
+      // Limitation stricte à 10 trackers WASP maximum pour des raisons de performance et de lisibilité
+      if (isNewWaspTracker && Object.keys(waspTrackersData).length >= 10) {
+        // Trouver le plus ancien tracker basé sur le dernier paquet vu
+        let oldestTrackerName = "";
+        let oldestTime = Infinity;
+        
+        Object.keys(waspTrackersData).forEach(name => {
+          // Utiliser activeTrackers pour connaître le timestamp réel d'activité
+          const lastSeen = activeTrackers[name] ? activeTrackers[name].lastSeen : 0;
+          if (lastSeen < oldestTime && name !== activeWaspTrackerName) {
+            oldestTime = lastSeen;
+            oldestTrackerName = name;
+          }
+        });
+        
+        if (oldestTrackerName) {
+          // Supprimer de la carte
+          if (waspMap) {
+            if (waspMarkers[oldestTrackerName]) {
+              waspMap.removeLayer(waspMarkers[oldestTrackerName]);
+              delete waspMarkers[oldestTrackerName];
+            }
+            if (waspPolylines[oldestTrackerName]) {
+              waspMap.removeLayer(waspPolylines[oldestTrackerName]);
+              delete waspPolylines[oldestTrackerName];
+            }
+          }
+          delete waspTrackersData[oldestTrackerName];
+          delete waspTrajectories[oldestTrackerName];
+          
+          // Mettre à jour le select
+          const selectWaspTracker = document.getElementById('select-wasp-tracker');
+          if (selectWaspTracker) {
+            const optionToRemove = Array.from(selectWaspTracker.options).find(opt => opt.value === oldestTrackerName);
+            if (optionToRemove) {
+              selectWaspTracker.removeChild(optionToRemove);
+            }
+          }
+        }
+      }
+
       // Stocker les données pour cet émetteur spécifique
-      const isNewWaspTracker = !waspTrackersData[trackerName];
       waspTrackersData[trackerName] = {
         id: waspId,
         apid: waspApid,
@@ -1022,8 +1064,8 @@ function decodeNectarFrame(frame) {
         alt: waspAlt,
         spd: waspSpd,
         cog: waspCog,
-        vbat: waspVbat / 1000.0, // Stocker en Volts
-        temp: waspTemp / 100.0,   // Stocker en °C
+        vbat: waspVbat / 1000.0,
+        temp: waspTemp / 100.0,
         gpsFix: gpsFix,
         numSats: numSats,
         rssi: rssi,
@@ -1033,9 +1075,7 @@ function decodeNectarFrame(frame) {
       // Mettre à jour ou ajouter l'option dans le menu déroulant select-wasp-tracker
       const selectWaspTracker = document.getElementById('select-wasp-tracker');
       if (selectWaspTracker) {
-        // Si c'est un nouvel émetteur, on l'ajoute au select
         if (isNewWaspTracker) {
-          // Si c'est le tout premier émetteur WASP, on supprime l'option factuelle "Attente émetteur..."
           if (Object.keys(waspTrackersData).length === 1) {
             selectWaspTracker.innerHTML = '';
           }
@@ -1045,7 +1085,6 @@ function decodeNectarFrame(frame) {
           opt.textContent = `${trackerName} (APID: ${waspApid})`;
           selectWaspTracker.appendChild(opt);
           
-          // Sélectionner automatiquement si c'est le premier émetteur détecté
           if (!activeWaspTrackerName) {
             activeWaspTrackerName = trackerName;
             selectWaspTracker.value = trackerName;
@@ -1053,10 +1092,21 @@ function decodeNectarFrame(frame) {
         }
       }
       
-      // Mettre à jour ou créer le marqueur sur la carte Leaflet pour cet émetteur
+      // Gestion de la trajectoire (50 derniers points) et affichage carte
       if (waspLat !== 0 && waspLon !== 0 && Math.abs(waspLat) <= 90 && Math.abs(waspLon) <= 180) {
-        waspLastPos = { lat: waspLat, lon: waspLon };
         const pos = [waspLat, waspLon];
+        
+        // Initialiser la trajectoire si nécessaire
+        if (!waspTrajectories[trackerName]) {
+          waspTrajectories[trackerName] = [];
+        }
+        
+        // Ajouter le nouveau point de trajectoire
+        waspTrajectories[trackerName].push(pos);
+        if (waspTrajectories[trackerName].length > 50) {
+          waspTrajectories[trackerName].shift(); // Conserver uniquement les 50 derniers points
+        }
+        
         const timeStr = waspUtc > 0 ? new Date(waspUtc * 1000).toLocaleTimeString() : 'Inconnue';
         const popupText = `
           <b>Tracker WASP: ${trackerName} (APID: ${waspApid})</b><br>
@@ -1068,26 +1118,39 @@ function decodeNectarFrame(frame) {
         `;
         
         if (waspMap) {
+          // 1. Tracer/Mettre à jour la ligne de trajectoire (polyline)
+          if (!waspPolylines[trackerName]) {
+            const colors = ['#06b6d4', '#f59e0b', '#10b981', '#a855f7', '#ec4899', '#3b82f6'];
+            const colorIdx = Object.keys(waspTrajectories).length % colors.length;
+            waspPolylines[trackerName] = L.polyline(waspTrajectories[trackerName], {
+              color: colors[colorIdx],
+              weight: 3,
+              opacity: 0.8
+            }).addTo(waspMap);
+          } else {
+            waspPolylines[trackerName].setLatLngs(waspTrajectories[trackerName]);
+          }
+          
+          // 2. Mettre à jour ou créer le marqueur (tête de tracé)
           if (!waspMarkers[trackerName]) {
-            // Créer un marqueur distinct pour cet émetteur
             waspMarkers[trackerName] = L.marker(pos).addTo(waspMap);
             waspMarkers[trackerName].bindPopup(popupText);
-            
-            // Ouvrir la popup si c'est le tracker actuellement actif
             if (trackerName === activeWaspTrackerName) {
               waspMarkers[trackerName].openPopup();
             }
           } else {
-            // Mettre à jour la position et la popup du marqueur existant
             waspMarkers[trackerName].setLatLng(pos);
             waspMarkers[trackerName].setPopupContent(popupText);
           }
           
-          // Si c'est l'émetteur actif, on centre la carte sur sa position
-          if (trackerName === activeWaspTrackerName) {
+          // 3. Recentrage intelligent : uniquement si c'est la toute première coordonnée reçue
+          // ou si aucun recentrage n'avait été fait au préalable (waspLastPos était nul)
+          if (trackerName === activeWaspTrackerName && (waspTrajectories[trackerName].length === 1 || !waspLastPos)) {
             waspMap.setView(pos, waspMap.getZoom() < 10 ? 14 : waspMap.getZoom());
           }
         }
+        
+        waspLastPos = pos;
       }
       
       // Si cet émetteur est celui sélectionné pour l'affichage, rafraîchir le cockpit
@@ -1822,7 +1885,22 @@ if (selectWaspTracker) {
     activeWaspTrackerName = selectWaspTracker.value;
     updateWaspCockpit(activeWaspTrackerName);
     
-    // Zoomer sur le tracker sélectionné si position disponible
+    // Centrer immédiatement et ouvrir la popup au changement de sélection (action utilisateur)
+    const data = waspTrackersData[activeWaspTrackerName];
+    if (data && data.lat !== 0 && data.lon !== 0 && waspMap) {
+      waspMap.setView([data.lat, data.lon], waspMap.getZoom() < 10 ? 14 : waspMap.getZoom());
+      if (waspMarkers[activeWaspTrackerName]) {
+        waspMarkers[activeWaspTrackerName].openPopup();
+      }
+    }
+  });
+}
+
+// Recentrage manuel via le bouton cible
+const btnRecenterWasp = document.getElementById('btn-recenter-wasp');
+if (btnRecenterWasp) {
+  btnRecenterWasp.addEventListener('click', () => {
+    if (!activeWaspTrackerName) return;
     const data = waspTrackersData[activeWaspTrackerName];
     if (data && data.lat !== 0 && data.lon !== 0 && waspMap) {
       waspMap.setView([data.lat, data.lon], waspMap.getZoom() < 10 ? 14 : waspMap.getZoom());
