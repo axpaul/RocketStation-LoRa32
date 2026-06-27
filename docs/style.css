@@ -966,16 +966,29 @@ footer {
 /* 🚀 WASP Cockpit Styling */
 .wasp-container {
   grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1.1fr 1.3fr; /* Côte à côte : Métriques à gauche, Carte à droite */
   gap: 1.5rem;
   margin-bottom: 0.5rem;
   width: 100%;
+  align-items: stretch;
+}
+
+.wasp-metrics-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.wasp-metrics-panel .card-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
 }
 
 .wasp-mini-stats {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(3, 1fr); /* 3 colonnes pour s'insérer proprement à gauche */
   gap: 1rem;
   width: 100%;
 }
@@ -1071,6 +1084,9 @@ footer {
 
 /* Responsiveness for WASP Cockpit */
 @media (max-width: 1024px) {
+  .wasp-container {
+    grid-template-columns: 1fr; /* Alignement vertical sur tablette/mobile */
+  }
   .wasp-mini-stats {
     grid-template-columns: repeat(3, 1fr);
   }
