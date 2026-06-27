@@ -44,8 +44,10 @@ const snrHistory = [];  // { value, time }
 
 // Variables globales pour la télémétrie WASP et la carte Leaflet
 let waspMap = null;
-let waspMarker = null;
-let waspLastPos = null; // Stockage de la dernière position valide {lat, lon}
+let waspMarkers = {}; // Dictionnaire des marqueurs Leaflet par tracker (ex: { "FX3": marker })
+let waspTrackersData = {}; // Dictionnaire des données WASP reçues par tracker (ex: { "FX3": { alt, spd, ... } })
+let activeWaspTrackerName = ""; // Nom de l'émetteur WASP actuellement sélectionné pour le cockpit
+let waspLastPos = null; // Stockage de la dernière position valide globale pour recentrage
 
 // Dictionnaire de traduction
 const i18n = {
@@ -991,12 +993,10 @@ function decodeNectarFrame(frame) {
         view.setUint8(i, payload[i]);
       }
       
-      // Les 3 octets de header d'identification (id, apid, type) sont déjà lus dans le header NectarMC
       const waspId = ssidNum;
       const waspApid = apid;
       const waspType = ssidType;
       
-      // Lecture des 29 octets restants
       const waspUtc = view.getUint32(0, true);
       const waspLat = view.getFloat32(4, true);
       const waspLon = view.getFloat32(8, true);
@@ -1010,42 +1010,89 @@ function decodeNectarFrame(frame) {
       const gpsFix = (waspStatus & 0x80) !== 0;
       const numSats = waspStatus & 0x1F;
       
-      // Mettre à jour les widgets
-      const txtAlt = document.getElementById('wasp-alt');
-      const txtSpd = document.getElementById('wasp-spd');
-      const txtSats = document.getElementById('wasp-sats');
-      const txtTemp = document.getElementById('wasp-temp');
-      const txtVbat = document.getElementById('wasp-vbat');
-      const txtSignal = document.getElementById('wasp-signal');
+      // Stocker les données pour cet émetteur spécifique
+      const isNewWaspTracker = !waspTrackersData[trackerName];
+      waspTrackersData[trackerName] = {
+        id: waspId,
+        apid: waspApid,
+        type: waspType,
+        utc: waspUtc,
+        lat: waspLat,
+        lon: waspLon,
+        alt: waspAlt,
+        spd: waspSpd,
+        cog: waspCog,
+        vbat: waspVbat / 1000.0, // Stocker en Volts
+        temp: waspTemp / 100.0,   // Stocker en °C
+        gpsFix: gpsFix,
+        numSats: numSats,
+        rssi: rssi,
+        snr: snr
+      };
       
-      if (txtAlt) txtAlt.textContent = waspAlt.toFixed(1) + ' m';
-      if (txtSpd) txtSpd.textContent = waspSpd.toFixed(1) + ' km/h';
-      if (txtSats) txtSats.textContent = (gpsFix ? '🟢 ' : '🔴 ') + numSats;
-      if (txtTemp) txtTemp.textContent = (waspTemp / 100).toFixed(2) + ' °C';
-      if (txtVbat) txtVbat.textContent = (waspVbat / 1000).toFixed(2) + ' V';
-      if (txtSignal) txtSignal.textContent = `${rssi} / ${snr}`;
+      // Mettre à jour ou ajouter l'option dans le menu déroulant select-wasp-tracker
+      const selectWaspTracker = document.getElementById('select-wasp-tracker');
+      if (selectWaspTracker) {
+        // Si c'est un nouvel émetteur, on l'ajoute au select
+        if (isNewWaspTracker) {
+          // Si c'est le tout premier émetteur WASP, on supprime l'option factuelle "Attente émetteur..."
+          if (Object.keys(waspTrackersData).length === 1) {
+            selectWaspTracker.innerHTML = '';
+          }
+          
+          const opt = document.createElement('option');
+          opt.value = trackerName;
+          opt.textContent = `${trackerName} (APID: ${waspApid})`;
+          selectWaspTracker.appendChild(opt);
+          
+          // Sélectionner automatiquement si c'est le premier émetteur détecté
+          if (!activeWaspTrackerName) {
+            activeWaspTrackerName = trackerName;
+            selectWaspTracker.value = trackerName;
+          }
+        }
+      }
       
-      // Si la position GPS est valide, on l'affiche sur la carte Leaflet
+      // Mettre à jour ou créer le marqueur sur la carte Leaflet pour cet émetteur
       if (waspLat !== 0 && waspLon !== 0 && Math.abs(waspLat) <= 90 && Math.abs(waspLon) <= 180) {
         waspLastPos = { lat: waspLat, lon: waspLon };
-        if (waspMap && waspMarker) {
-          const pos = [waspLat, waspLon];
-          waspMarker.setLatLng(pos);
+        const pos = [waspLat, waspLon];
+        const timeStr = waspUtc > 0 ? new Date(waspUtc * 1000).toLocaleTimeString() : 'Inconnue';
+        const popupText = `
+          <b>Tracker WASP: ${trackerName} (APID: ${waspApid})</b><br>
+          Altitude: ${waspAlt.toFixed(1)} m<br>
+          Vitesse: ${waspSpd.toFixed(1)} km/h<br>
+          Cap (COG): ${waspCog.toFixed(1)}°<br>
+          GPS Fix: ${gpsFix ? 'Fix valide' : 'Pas de fix'}<br>
+          Heure GPS: ${timeStr}
+        `;
+        
+        if (waspMap) {
+          if (!waspMarkers[trackerName]) {
+            // Créer un marqueur distinct pour cet émetteur
+            waspMarkers[trackerName] = L.marker(pos).addTo(waspMap);
+            waspMarkers[trackerName].bindPopup(popupText);
+            
+            // Ouvrir la popup si c'est le tracker actuellement actif
+            if (trackerName === activeWaspTrackerName) {
+              waspMarkers[trackerName].openPopup();
+            }
+          } else {
+            // Mettre à jour la position et la popup du marqueur existant
+            waspMarkers[trackerName].setLatLng(pos);
+            waspMarkers[trackerName].setPopupContent(popupText);
+          }
           
-          const timeStr = waspUtc > 0 ? new Date(waspUtc * 1000).toLocaleTimeString() : 'Inconnue';
-          
-          waspMarker.setPopupContent(`
-            <b>Tracker WASP [ID: ${waspId}]</b><br>
-            Altitude: ${waspAlt.toFixed(1)} m<br>
-            Vitesse: ${waspSpd.toFixed(1)} km/h<br>
-            Cap (COG): ${waspCog.toFixed(1)}°<br>
-            GPS Fix: ${gpsFix ? 'Fix valide' : 'Pas de fix'}<br>
-            Heure GPS: ${timeStr}
-          `);
-          
-          // Suivre la position sur la carte
-          waspMap.setView(pos, waspMap.getZoom() < 10 ? 14 : waspMap.getZoom());
+          // Si c'est l'émetteur actif, on centre la carte sur sa position
+          if (trackerName === activeWaspTrackerName) {
+            waspMap.setView(pos, waspMap.getZoom() < 10 ? 14 : waspMap.getZoom());
+          }
         }
+      }
+      
+      // Si cet émetteur est celui sélectionné pour l'affichage, rafraîchir le cockpit
+      if (trackerName === activeWaspTrackerName) {
+        updateWaspCockpit(trackerName);
       }
     } catch (e) {
       console.error("Erreur de décodage de la charge utile WASP:", e);
@@ -1657,6 +1704,26 @@ if (btnClearTrackers) {
         tableBody.appendChild(rowEmptyTrackers);
       }
     }
+    
+    // Nettoyer la télémétrie WASP
+    waspTrackersData = {};
+    activeWaspTrackerName = "";
+    waspLastPos = null;
+    
+    // Supprimer tous les marqueurs de la carte Leaflet
+    Object.keys(waspMarkers).forEach(key => {
+      if (waspMap && waspMarkers[key]) {
+        waspMap.removeLayer(waspMarkers[key]);
+      }
+    });
+    waspMarkers = {};
+    
+    // Réinitialiser le cockpit et le sélecteur
+    updateWaspCockpit(null);
+    const selectWaspTracker = document.getElementById('select-wasp-tracker');
+    if (selectWaspTracker) {
+      selectWaspTracker.innerHTML = '<option value="" disabled selected>Attente émetteur...</option>';
+    }
   });
 }
 
@@ -1674,7 +1741,7 @@ const btnLangEn = document.getElementById('btn-lang-en');
 if (btnLangFr) btnLangFr.addEventListener('click', () => setLanguage('fr'));
 if (btnLangEn) btnLangEn.addEventListener('click', () => setLanguage('en'));
 
-// Initialisation de la carte Leaflet WASP
+// Initialisation de la carte Leaflet WASP (sans marqueur par défaut)
 function initWaspMap() {
   if (waspMap) return; // Déjà initialisée
   
@@ -1689,40 +1756,78 @@ function initWaspMap() {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     maxZoom: 20
   }).addTo(waspMap);
-  
-  // Création du marqueur avec une popup descriptive
-  waspMarker = L.marker([defaultLat, defaultLon]).addTo(waspMap);
-  waspMarker.bindPopup("<b>Position Wasp</b><br>Attente de données GPS...").openPopup();
 }
 
-// Écouteur d'état pour le mode décodeur WASP
+// Fonction de mise à jour des widgets Cockpit WASP pour un tracker spécifique
+function updateWaspCockpit(trackerName) {
+  const data = waspTrackersData[trackerName];
+  
+  const txtAlt = document.getElementById('wasp-alt');
+  const txtSpd = document.getElementById('wasp-spd');
+  const txtSats = document.getElementById('wasp-sats');
+  const txtTemp = document.getElementById('wasp-temp');
+  const txtVbat = document.getElementById('wasp-vbat');
+  const txtSignal = document.getElementById('wasp-signal');
+  
+  if (!data) {
+    if (txtAlt) txtAlt.textContent = '--';
+    if (txtSpd) txtSpd.textContent = '--';
+    if (txtSats) txtSats.textContent = '--';
+    if (txtTemp) txtTemp.textContent = '--';
+    if (txtVbat) txtVbat.textContent = '--';
+    if (txtSignal) txtSignal.textContent = '--';
+    return;
+  }
+  
+  if (txtAlt) txtAlt.textContent = data.alt.toFixed(1) + ' m';
+  if (txtSpd) txtSpd.textContent = data.spd.toFixed(1) + ' km/h';
+  if (txtSats) txtSats.textContent = (data.gpsFix ? '🟢 ' : '🔴 ') + data.numSats;
+  if (txtTemp) txtTemp.textContent = data.temp.toFixed(2) + ' °C';
+  if (txtVbat) txtVbat.textContent = data.vbat.toFixed(2) + ' V';
+  if (txtSignal) txtSignal.textContent = `${data.rssi} / ${data.snr}`;
+}
+
+// Écouteur d'état pour le mode décodeur WASP et le sélecteur de tracker
 const chkWaspDecoding = document.getElementById('chk-wasp-decoding');
 const waspSection = document.getElementById('wasp-section');
+const selectWaspTracker = document.getElementById('select-wasp-tracker');
 
 if (chkWaspDecoding) {
   chkWaspDecoding.addEventListener('change', () => {
     if (chkWaspDecoding.checked) {
       if (waspSection) {
         waspSection.classList.remove('hidden');
-        // Initialise la carte si ce n'est pas déjà fait
         initWaspMap();
-        // Permet à Leaflet de recalculer sa taille après que le conteneur soit affiché
         setTimeout(() => {
           if (waspMap) {
             waspMap.invalidateSize();
-            // Centrer sur la dernière position si elle existe
             if (waspLastPos) {
               waspMap.setView([waspLastPos.lat, waspLastPos.lon], 13);
             }
           }
         }, 150);
-        
-        // Scroll fluide vers la section Wasp
         waspSection.scrollIntoView({ behavior: 'smooth' });
       }
     } else {
       if (waspSection) {
         waspSection.classList.add('hidden');
+      }
+    }
+  });
+}
+
+// Changement de l'émetteur actif via le sélecteur
+if (selectWaspTracker) {
+  selectWaspTracker.addEventListener('change', () => {
+    activeWaspTrackerName = selectWaspTracker.value;
+    updateWaspCockpit(activeWaspTrackerName);
+    
+    // Zoomer sur le tracker sélectionné si position disponible
+    const data = waspTrackersData[activeWaspTrackerName];
+    if (data && data.lat !== 0 && data.lon !== 0 && waspMap) {
+      waspMap.setView([data.lat, data.lon], waspMap.getZoom() < 10 ? 14 : waspMap.getZoom());
+      if (waspMarkers[activeWaspTrackerName]) {
+        waspMarkers[activeWaspTrackerName].openPopup();
       }
     }
   });
