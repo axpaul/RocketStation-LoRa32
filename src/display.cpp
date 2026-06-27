@@ -7,6 +7,9 @@
 
 #include "header.h"
 
+// Spinlock partagé avec radio.cpp pour les variables d'affichage inter-cœur
+extern portMUX_TYPE dispMux;
+
 // Variables d'état locales pour la rotation et le calcul du débit d'affichage
 static uint32_t activeTrackersCount = 0;
 static uint32_t dataRateBps = 0;
@@ -92,13 +95,34 @@ void ScreenText(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2) {
  */
 void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
   u8g2->clearBuffer();
+
+  // Copie locale thread-safe des variables partagées avec le Cœur 1
+  char localStatus[32];
+  char localSsidApid[32];
+  float localRssi;
+  float localSnr;
+  bool localHasFrame;
+  uint32_t localBytesReceived;
+  unsigned long localTrackerTimes[256];
+
+  taskENTER_CRITICAL(&dispMux);
+  memcpy(localStatus, dispStatus, sizeof(localStatus));
+  memcpy(localSsidApid, dispSsidApid, sizeof(localSsidApid));
+  localRssi = dispRssi;
+  localSnr = dispSnr;
+  localHasFrame = dispHasFrame;
+  localBytesReceived = bytesReceivedThisSecond;
+  bytesReceivedThisSecond = 0;
+  memcpy(localTrackerTimes, lastTrackerPacketTime, sizeof(localTrackerTimes));
+  taskEXIT_CRITICAL(&dispMux);
+
   u8g2->setFont(u8g2_font_ncenB08_tr); // Police grasse principale
 
   char buf[64];
   char timeBuf[16];
   
   // 1. En-tête : Affichage du statut RX
-  u8g2->drawStr(0, 12, dispStatus);
+  u8g2->drawStr(0, 12, localStatus);
   
   // En-tête : Affichage de l'heure
   snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", rtc.getHour(true), rtc.getMinute(), rtc.getSecond());
@@ -116,7 +140,7 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
     snprintf(batBuf, sizeof(batBuf), "%.1fV", vbat);
   }
 
-  int statusWidth = u8g2->getStrWidth(dispStatus);
+  int statusWidth = u8g2->getStrWidth(localStatus);
   int availableSpace = clockX - statusWidth;
 
   // Affichage du symbole Bluetooth si connecté (prioritaire sur la tension)
@@ -185,8 +209,7 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
   // Calcul du débit de données instantané toutes les secondes
   unsigned long elapsed = millis() - lastRateCalculation;
   if (elapsed >= 1000) {
-    dataRateBps = (bytesReceivedThisSecond * 1000) / elapsed;
-    bytesReceivedThisSecond = 0;
+    dataRateBps = (localBytesReceived * 1000) / elapsed;
     lastRateCalculation = millis();
   }
 
@@ -194,7 +217,7 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
   uint32_t tempActiveCount = 0;
   unsigned long now = millis();
   for (int i = 0; i < 256; i++) {
-    if (lastTrackerPacketTime[i] != 0 && (now - lastTrackerPacketTime[i] <= 10000)) {
+    if (localTrackerTimes[i] != 0 && (now - localTrackerTimes[i] <= 10000)) {
       tempActiveCount++;
     }
   }
@@ -202,17 +225,17 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
 
   // 4. Dessin de la zone d'affichage alternée
   if (dispMode == 0) {
-    u8g2->drawStr(0, 30, dispSsidApid);
+    u8g2->drawStr(0, 30, localSsidApid);
 
-    if (dispHasFrame) {
-      snprintf(buf, sizeof(buf), "RSSI: %.2f dBm", dispRssi);
+    if (localHasFrame) {
+      snprintf(buf, sizeof(buf), "RSSI: %.2f dBm", localRssi);
     } else {
       snprintf(buf, sizeof(buf), "RSSI: -- dBm");
     }
     u8g2->drawStr(0, 44, buf);
 
-    if (dispHasFrame) {
-      snprintf(buf, sizeof(buf), "SNR: %.2f dB", dispSnr);
+    if (localHasFrame) {
+      snprintf(buf, sizeof(buf), "SNR: %.2f dB", localSnr);
     } else {
       snprintf(buf, sizeof(buf), "SNR: -- dB");
     }

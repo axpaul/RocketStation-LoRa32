@@ -30,6 +30,9 @@ bool displayNeedsUpdate = false;
 unsigned long lastTrackerPacketTime[256] = {0};
 uint32_t bytesReceivedThisSecond = 0;
 
+// Spinlock pour la protection des variables d'affichage partagées entre cœurs
+portMUX_TYPE dispMux = portMUX_INITIALIZER_UNLOCKED;
+
 /**
  * @brief Routine de Service d'Interruption (ISR) déclenchée à la réception d'un paquet LoRa.
  * 
@@ -111,12 +114,7 @@ float readBatteryVoltage() {
 }
 
 /**
- * @brief Met à jour l'écran OLED avec le statut de réception, la batterie, l'heure et la rotation d'écrans.
-
-
-/**
  * @brief Extrait la charge utile brute et les paramètres physiques d'une trame LoRa reçue.
- * @param u8g2 Pointeur vers l'écran OLED.
  * @param radio Pointeur vers le composant SX1276.
  * @param byteArr Tableau recevant la charge utile décodée.
  * @param maxLen Capacité maximale du tableau de réception.
@@ -127,7 +125,7 @@ float readBatteryVoltage() {
  * met à jour les indicateurs physiques de signal (RSSI, SNR), actualise l'afficheur OLED,
  * puis réactive l'écoute continue du composant radio.
  */
-size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, uint8_t* byteArr, size_t maxLen) {
+size_t RadioReceive(SX1276 *radio, uint8_t* byteArr, size_t maxLen) {
   // Désactiver les interruptions le temps de traiter le paquet
   enableInterrupt = false;
 
@@ -144,9 +142,11 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
     if (!activeConfig.crcEnable) {
       if (length < 5) {
         errCount++;
+        taskENTER_CRITICAL(&dispMux);
         snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
         strcpy(dispSsidApid, "Invalid size (<5B)");
         displayNeedsUpdate = true;
+        taskEXIT_CRITICAL(&dispMux);
         RadioStartListen(radio);
         return 0;
       }
@@ -156,9 +156,11 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
 
       if (calculatedCrc != receivedCrc) {
         errCount++;
+        taskENTER_CRITICAL(&dispMux);
         snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
         strcpy(dispSsidApid, "CRC Error (Soft)");
         displayNeedsUpdate = true;
+        taskEXIT_CRITICAL(&dispMux);
         RadioStartListen(radio);
         return 0;
       }
@@ -171,6 +173,7 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
     // Formatage compact sans espace et limitation à 3 chiffres (0-999) pour conserver de l'espace
     uint32_t dispRx = rxCount % 1000;
     uint32_t dispErr = errCount % 1000;
+    taskENTER_CRITICAL(&dispMux);
     if (errCount == 0) {
       snprintf(dispStatus, sizeof(dispStatus), "RX:%d", dispRx);
     } else {
@@ -205,24 +208,29 @@ size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, ui
     bytesReceivedThisSecond += length;
 
     displayNeedsUpdate = true;
+    taskEXIT_CRITICAL(&dispMux);
     RadioStartListen(radio);
     return length;
   } else if (state == RADIOLIB_ERR_CRC_MISMATCH) {
     errCount++;
+    taskENTER_CRITICAL(&dispMux);
     snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
     dispRssi = radio->getRSSI();
     dispSnr = radio->getSNR();
     
     displayNeedsUpdate = true;
+    taskEXIT_CRITICAL(&dispMux);
     RadioStartListen(radio);
     return 0;
   } else {
     errCount++;
+    taskENTER_CRITICAL(&dispMux);
     snprintf(dispStatus, sizeof(dispStatus), "RX:%d E:%d", rxCount % 1000, errCount % 1000);
     dispRssi = radio->getRSSI();
     dispSnr = radio->getSNR();
     
     displayNeedsUpdate = true;
+    taskEXIT_CRITICAL(&dispMux);
     RadioStartListen(radio);
     return 0;
   }

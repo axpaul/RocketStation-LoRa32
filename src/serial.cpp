@@ -20,6 +20,9 @@ BluetoothSerial SerialBT;
  * Utilise le polynôme standard 0x1021 avec une valeur initiale de 0xFFFF.
  */
 uint16_t calculate_crc16(const uint8_t *data, size_t len) {
+    if (data == nullptr || len == 0) {
+        return 0xFFFF;
+    }
     uint16_t crc = 0xFFFF;
     for (size_t i = 0; i < len; ++i) {
         crc ^= (data[i] << 8);

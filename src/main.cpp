@@ -92,7 +92,7 @@ void setup() {
       log.println("Index,Timestamp,Length,RSSI,SNR,SSID,APID,RawFrame");
       log.close();
     }
-    checkSDCardSpace(u8g2);
+    checkSDCardSpace();
   }
 
   // Configuration et démarrage initial du module radio LoRa
@@ -173,7 +173,7 @@ void vRadioRxTask(void *pvParameters) {
 
       // Prendre le mutex radio pour accès exclusif au module SX1276 sur le bus SPI
       if (xSemaphoreTake(radioMutex, portMAX_DELAY) == pdTRUE) {
-        len = RadioReceive(u8g2, &radio, rxBuffer, MAX_FRAME_SIZE);
+        len = RadioReceive(&radio, rxBuffer, MAX_FRAME_SIZE);
         if (len > 0) {
           rssi_val = (int8_t)dispRssi;
           snr_val = (int8_t)(dispSnr * 4.0f);

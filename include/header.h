@@ -148,7 +148,7 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio);
 
 // Gestion de la carte SD
 void SDCardDetection(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SPIClass* SDSPI, bool* SDCard);
-void checkSDCardSpace(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2);
+void checkSDCardSpace();
 void writeFrameToFile(const char* filepath, const uint8_t* frame, size_t length, float rssi, float snr, const char* ssid_str, uint8_t apid);
 
 // Gestion de la configuration non-volatile (NVS)
@@ -158,7 +158,7 @@ void resetLoRaConfig();
 
 // Gestion du module radio SX1276
 void RadioSettings(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio);
-size_t RadioReceive(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276 *radio, uint8_t* byteArr, size_t maxLen);
+size_t RadioReceive(SX1276 *radio, uint8_t* byteArr, size_t maxLen);
 void RadioStartListen(SX1276 *radio);
 void IRAM_ATTR setFlag(void);
 

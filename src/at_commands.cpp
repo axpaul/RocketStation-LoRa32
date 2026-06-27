@@ -26,6 +26,12 @@ void checkSerialCommands(SX1276 *radio) {
       }
     } else if (serialIdx < sizeof(serialBuf) - 1) {
       serialBuf[serialIdx++] = c;
+    } else {
+      // Commande trop longue : vider le buffer et signaler l'erreur
+      serialIdx = 0;
+      Serial.println("ERROR: Command too long (max 63 chars)");
+      // Consommer le reste de la ligne
+      while (Serial.available() > 0 && Serial.peek() != '\n' && Serial.peek() != '\r') { Serial.read(); }
     }
   }
 
@@ -44,6 +50,11 @@ void checkSerialCommands(SX1276 *radio) {
       }
     } else if (btIdx < sizeof(btBuf) - 1) {
       btBuf[btIdx++] = c;
+    } else {
+      // Commande trop longue : vider le buffer et signaler l'erreur
+      btIdx = 0;
+      SerialBT.println("ERROR: Command too long (max 63 chars)");
+      while (SerialBT.available() > 0 && SerialBT.peek() != '\n' && SerialBT.peek() != '\r') { SerialBT.read(); }
     }
   }
 #endif

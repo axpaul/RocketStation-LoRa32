@@ -87,9 +87,8 @@ void SDCardDetection(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SPIClass* SDSPI,
 
 /**
  * @brief Calcule et affiche l'espace disponible sur la carte SD via le port série.
- * @param u8g2 Pointeur vers l'écran OLED.
  */
-void checkSDCardSpace(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2) {
+void checkSDCardSpace() {
   uint64_t totalBytes = SD.totalBytes();
   uint64_t usedBytes = SD.usedBytes();
   uint64_t freeBytes = totalBytes - usedBytes;
