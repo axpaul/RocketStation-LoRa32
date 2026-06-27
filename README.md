@@ -158,7 +158,10 @@ graph TD
         ISR --> SEM --> RADIO
     end
 
+    RECEIVE(["RadioReceive()"])
     QUEUE(["rxQueue"])
+
+    RADIO --> RECEIVE
     RADIO --> QUEUE
 
     subgraph C0["Cœur 0 — Périphériques & I/O"]
@@ -168,23 +171,17 @@ graph TD
 
     QUEUE --> IO
 
-    RECEIVE(["RadioReceive()"])
     CHECK(["checkSerialCommands()"])
     DISPLAY(["updateDisplay()"])
     WRITE(["writeFrameToFile()"])
     SEND(["sendNectarFrame()"])
-    SPINLOCK(["dispMux"])
 
-    RADIO --> RECEIVE
     PERIPH --> CHECK
     PERIPH --> DISPLAY
     IO --> WRITE
     IO --> SEND
 
-    RECEIVE -.-> SPINLOCK
-    DISPLAY -.-> SPINLOCK
-
-    SX["SX1276 (radioMutex · VSPI)"]
+    SX["SX1276 (radioMutex)"]
     OLED["SSD1306 (I2C)"]
     SD["Carte SD (HSPI)"]
     USB["USB / Bluetooth"]
