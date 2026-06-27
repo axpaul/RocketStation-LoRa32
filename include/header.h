@@ -11,7 +11,7 @@
 #ifndef HEADER_H
 #define HEADER_H
 
-#define FW_VERSION "1.5.0"
+#define FW_VERSION "1.6.0"
 
 #include <Arduino.h>
 #include <SPI.h>
