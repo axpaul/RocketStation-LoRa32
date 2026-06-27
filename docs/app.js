@@ -981,28 +981,31 @@ function decodeNectarFrame(frame) {
   
   updateTrackersTable();
 
-  // Décodage optionnel de la charge utile WASP (32 octets)
+  // Décodage optionnel de la charge utile WASP (29 octets + 3 octets de header NectarMC = 32 octets au total)
   const chkWaspDecoding = document.getElementById('chk-wasp-decoding');
-  if (chkWaspDecoding && chkWaspDecoding.checked && payloadSize === 32) {
+  if (chkWaspDecoding && chkWaspDecoding.checked && payloadSize === 29) {
     try {
-      const buffer = new ArrayBuffer(32);
+      const buffer = new ArrayBuffer(29);
       const view = new DataView(buffer);
-      for (let i = 0; i < 32; i++) {
+      for (let i = 0; i < 29; i++) {
         view.setUint8(i, payload[i]);
       }
       
-      const waspId = view.getUint8(0);
-      const waspApid = view.getUint8(1);
-      const waspType = view.getUint8(2);
-      const waspUtc = view.getUint32(3, true);
-      const waspLat = view.getFloat32(7, true);
-      const waspLon = view.getFloat32(11, true);
-      const waspAlt = view.getFloat32(15, true);
-      const waspSpd = view.getFloat32(19, true);
-      const waspCog = view.getFloat32(23, true);
-      const waspVbat = view.getUint16(27, true);
-      const waspTemp = view.getInt16(29, true);
-      const waspStatus = view.getUint8(31);
+      // Les 3 octets de header d'identification (id, apid, type) sont déjà lus dans le header NectarMC
+      const waspId = ssidNum;
+      const waspApid = apid;
+      const waspType = ssidType;
+      
+      // Lecture des 29 octets restants
+      const waspUtc = view.getUint32(0, true);
+      const waspLat = view.getFloat32(4, true);
+      const waspLon = view.getFloat32(8, true);
+      const waspAlt = view.getFloat32(12, true);
+      const waspSpd = view.getFloat32(16, true);
+      const waspCog = view.getFloat32(20, true);
+      const waspVbat = view.getUint16(24, true);
+      const waspTemp = view.getInt16(26, true);
+      const waspStatus = view.getUint8(28);
       
       const gpsFix = (waspStatus & 0x80) !== 0;
       const numSats = waspStatus & 0x1F;
