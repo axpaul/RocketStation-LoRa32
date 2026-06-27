@@ -151,74 +151,49 @@ Le micrologiciel du récepteur est architecturé autour de l'OS temps réel **Fr
 
 ```mermaid
 graph TD
-    %% Styles
-    classDef core1 fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
-    classDef core0 fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
-    classDef hw fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
-    classDef input fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
-    classDef output fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
-    classDef sync fill:#ec4899,stroke:#db2777,stroke-width:2px,color:#fff
-
-    %% ── INPUTS ──
-    subgraph INPUTS ["🚀 Physical Inputs"]
-        ROCKET["Rocket LoRa Signal"]:::input
-        PC_CMD["PC / Bluetooth AT Commands"]:::input
+    subgraph C1["Cœur 1 — Radio Critique"]
+        ISR["ISR setFlag()"]
+        SEM(["rxSemaphore"])
+        RADIO["vRadioRxTask (Prio 3)"]
+        ISR --> SEM --> RADIO
     end
 
-    %% ── ESP32 CORE 1 ──
-    subgraph CORE1 ["⚡ ESP32 Core 1 — Radio Pipeline"]
-        ISR["setFlag ISR — IRAM_ATTR"]:::core1
-        RADIO_TASK["vRadioRxTask<br/>Prio 3 · Stack 4 Ko"]:::core1
-        SX1276["SX1276 LoRa Chip<br/>VSPI Bus"]:::hw
+    QUEUE(["rxQueue"])
+    RADIO --> QUEUE
+
+    subgraph C0["Cœur 0 — Périphériques & I/O"]
+        PERIPH["vPeripheralTask (Prio 1)"]
+        IO["vIOProcessingTask (Prio 1)"]
     end
 
-    %% ── SYNCHRONISATION ──
-    subgraph SYNC ["🔒 FreeRTOS Synchronization"]
-        SEM["rxSemaphore<br/>Binary Semaphore"]:::sync
-        QUEUE["rxQueue<br/>Packet Queue x4"]:::sync
-        MUTEX["radioMutex<br/>SPI Bus Guard"]:::sync
-        SPINLOCK["dispMux<br/>Display Vars Spinlock"]:::sync
-    end
+    QUEUE --> IO
 
-    %% ── ESP32 CORE 0 ──
-    subgraph CORE0 ["🔧 ESP32 Core 0 — Processing Tasks"]
-        IO_TASK["vIOProcessingTask<br/>Prio 1 · Stack 8 Ko"]:::core0
-        PERIPH_TASK["vPeripheralTask<br/>Prio 1 · Stack 4 Ko"]:::core0
-    end
+    RECEIVE(["RadioReceive()"])
+    CHECK(["checkSerialCommands()"])
+    DISPLAY(["updateDisplay()"])
+    WRITE(["writeFrameToFile()"])
+    SEND(["sendNectarFrame()"])
+    SPINLOCK(["dispMux"])
 
-    %% ── HARDWARE ──
-    subgraph HW ["🖥️ ESP32 LoRa32 Hardware"]
-        OLED["OLED SSD1306 128x64<br/>I2C Bus"]:::hw
-        SD["SD Card Reader<br/>HSPI Bus"]:::hw
-    end
+    RADIO --> RECEIVE
+    PERIPH --> CHECK
+    PERIPH --> DISPLAY
+    IO --> WRITE
+    IO --> SEND
 
-    %% ── OUTPUTS ──
-    subgraph OUTPUTS ["📡 External Outputs"]
-        CSV["CSV Log Files"]:::output
-        NECTAR["NectarMC USB/BT<br/>Binary Protocol"]:::output
-    end
+    RECEIVE -.-> SPINLOCK
+    DISPLAY -.-> SPINLOCK
 
-    %% ── DATA FLOWS ──
-    ROCKET -->|"DIO0 Interrupt"| ISR
-    ISR -->|"xSemaphoreGiveFromISR"| SEM
-    SEM -->|"Wakes up task"| RADIO_TASK
-    RADIO_TASK <-->|"readData / startReceive"| SX1276
-    RADIO_TASK -->|"xQueueSend LoRaPacket"| QUEUE
-    RADIO_TASK -.->|"taskENTER_CRITICAL"| SPINLOCK
+    SX["SX1276 (radioMutex · VSPI)"]
+    OLED["SSD1306 (I2C)"]
+    SD["Carte SD (HSPI)"]
+    USB["USB / Bluetooth"]
 
-    QUEUE -->|"xQueueReceive"| IO_TASK
-    IO_TASK -->|"writeFrameToFile"| SD
-    IO_TASK -->|"sendNectarFrame"| NECTAR
-    SD -->|"Saved as"| CSV
-
-    PC_CMD -->|"USB / Bluetooth SPP"| PERIPH_TASK
-    PERIPH_TASK -->|"updateDisplay"| OLED
-    PERIPH_TASK -->|"handleConfigCommand"| SX1276
-    PERIPH_TASK -.->|"taskENTER_CRITICAL"| SPINLOCK
-
-    SX1276 -.-|"radioMutex"| MUTEX
-    MUTEX -.-|"xSemaphoreTake"| RADIO_TASK
-    MUTEX -.-|"xSemaphoreTake"| PERIPH_TASK
+    RECEIVE --> SX
+    CHECK --> SX
+    DISPLAY --> OLED
+    WRITE --> SD
+    SEND --> USB
 ```
 
 ### Mécanismes de synchronisation
