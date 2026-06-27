@@ -151,50 +151,30 @@ Le micrologiciel du récepteur est architecturé autour de l'OS temps réel **Fr
 
 ```mermaid
 graph TD
-    %% Priority & Hardware Color Styles
+    %% Color Styles
     classDef highPrio fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff;
     classDef normPrio fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff;
-    classDef lowPrio fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff;
     classDef hwStyle fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff;
+    classDef inputStyle fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff;
 
-    %% Hardware Components
-    SX1276["LoRa Module (SX1276)"]:::hwStyle
-    OLED["OLED Display (I2C)"]:::hwStyle
-    SDCard["SD Card (HSPI)"]:::hwStyle
-    USB_BT_Out["USB Serial & Bluetooth<br/>(Telemetry Output)"]:::hwStyle
-    USB_BT_In["USB Serial & Bluetooth<br/>(AT Commands Input)"]:::hwStyle
+    %% 1. Inputs (Incoming data to the station)
+    SignalLoRa[Rocket LoRa Signal]:::inputStyle -->|1. Triggers interrupt| TacheRadio[Radio Task <br/> Core 1 - Prio 3]:::highPrio
+    ConsolePC[PC AT Commands]:::inputStyle -->|2. USB/Bluetooth Input| TachePeriph[Peripherals Task <br/> Core 0 - Prio 1]:::normPrio
 
-    subgraph ESP32 [ESP32 dual-core scheduler]
-        
-        subgraph Core1 [Core 1 - 100% Radio Dedicated]
-            RadioTask["vRadioRxTask<br/><b>PRIORITY 3 (CRITICAL)</b><br/><i>Wake on Interrupt & Read packet</i>"]:::highPrio
-            Loop["loop()<br/><b>PRIORITY 1 (SLEEP)</b><br/><i>Suspended (0% CPU load)</i>"]:::lowPrio
-        end
+    %% 2. Tasks inside the ESP32
+    TacheRadio -->|3. Reads data| PuceLoRa[LoRa Chip SX1276]:::hwStyle
+    TacheRadio -->|4. Transmits via Queue| TacheEcriture[I/O Write Task <br/> Core 0 - Prio 1]:::normPrio
 
-        subgraph Core0 [Core 0 - Peripherals Dedicated]
-            IOTask["vIOProcessingTask<br/><b>PRIORITY 1 (NORMAL)</b><br/><i>Asynchronous writes (SD & PC)</i>"]:::normPrio
-            PeriTask["vPeripheralTask<br/><b>PRIORITY 1 (NORMAL)</b><br/><i>OLED refresh & AT Console</i>"]:::normPrio
-        end
-
-    end
-
-    %% Data Flows
-    SX1276 -->|1. DIO0 Interrupt| RadioTask
-    RadioTask -->|2. SPI Read Data| SX1276
-    RadioTask -->|3. Push packet to rxQueue| IOTask
+    %% 3. Outputs (Written by the station)
+    TacheEcriture -->|5a. Saves to| CarteSD[SD Card]:::hwStyle
+    TacheEcriture -->|5b. Sends telemetry| LogicielPC[NectarMC PC Software]:::hwStyle
     
-    %% Core 0 Outputs
-    IOTask -->|4a. Save CSV| SDCard
-    IOTask -->|4b. Send binary frame| USB_BT_Out
+    TachePeriph -->|6. Draws to| OLED[OLED Screen]:::hwStyle
+    TachePeriph -->|7. Applies config| PuceLoRa
 
-    %% Core 0 Peripherals
-    PeriTask -->|OLED writes| OLED
-    USB_BT_In -->|4c. Read keystrokes| PeriTask
-    PeriTask -->|5. SPI Config Changes| SX1276
-
-    %% Mutex safety locks
-    RadioTask -.->|SPI Protected by radioMutex| SX1276
-    PeriTask -.->|SPI Protected by radioMutex| SX1276
+    %% 4. Security Lock
+    PuceLoRa -.->|Protected by radioMutex| TacheRadio
+    PuceLoRa -.->|Protected by radioMutex| TachePeriph
 ```
 
 ### Mécanismes de synchronisation
