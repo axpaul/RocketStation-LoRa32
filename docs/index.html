@@ -295,9 +295,12 @@
       <section class="card wasp-metrics-panel">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--bg-card-border); padding-bottom: 0.6rem;">
           <h2 data-i18n="wasp_title" style="border-bottom: none; padding-bottom: 0; margin-bottom: 0;">🚀 Télémétrie Wasp Décryptée</h2>
-          <select id="select-wasp-tracker" style="padding: 0.3rem 0.6rem; font-size: 0.85rem; background: var(--bg-deep); border: 1px solid var(--bg-card-border); color: var(--text-main); border-radius: 4px; outline: none; cursor: pointer; font-family: var(--font-sans); font-weight: 600;">
-            <option value="" disabled selected>Attente émetteur...</option>
-          </select>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <select id="select-wasp-tracker" style="padding: 0.3rem 0.6rem; font-size: 0.85rem; background: var(--bg-deep); border: 1px solid var(--bg-card-border); color: var(--text-main); border-radius: 4px; outline: none; cursor: pointer; font-family: var(--font-sans); font-weight: 600;">
+              <option value="" disabled selected>Attente émetteur...</option>
+            </select>
+            <button id="btn-recenter-wasp" class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; height: auto;" title="Recentrer la carte sur le tracker actif">🎯</button>
+          </div>
         </div>
         <div class="card-content" style="padding-top: 0.5rem;">
           <div class="wasp-mini-stats">
