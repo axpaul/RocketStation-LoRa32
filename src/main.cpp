@@ -143,9 +143,6 @@ void setup() {
   );
 
   Serial.println("[SYSTEM] FreeRTOS Multitasking initialized successfully!");
-
-  // Premier affichage immédiat des données et du statut de l'écran
-  updateDisplay(u8g2, &radio);
 }
 
 /**
