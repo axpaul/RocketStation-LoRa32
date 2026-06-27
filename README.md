@@ -151,57 +151,81 @@ Le micrologiciel du récepteur est architecturé autour de l'OS temps réel **Fr
 
 ```mermaid
 graph TD
-    %% Color Styles
-    classDef highPrio fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff;
-    classDef normPrio fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff;
-    classDef hwStyle fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff;
-    classDef inputStyle fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff;
+    %% Styles
+    classDef core1 fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+    classDef core0 fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
+    classDef hw fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
+    classDef input fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+    classDef output fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
+    classDef sync fill:#ec4899,stroke:#db2777,stroke-width:2px,color:#fff
 
-    subgraph Inputs [Physical Inputs]
-        SignalLoRa[Rocket LoRa Signal]:::inputStyle
-        ConsolePC[PC AT Commands]:::inputStyle
-        SignalLoRa ~~~ ConsolePC
+    %% ── INPUTS ──
+    subgraph INPUTS ["🚀 Physical Inputs"]
+        ROCKET["Rocket LoRa Signal"]:::input
+        PC_CMD["PC / Bluetooth AT Commands"]:::input
     end
 
-    subgraph Board [TTGO LoRa32 Board]
-        TacheRadio[Radio Task <br/> Core 1 - Prio 3]:::highPrio
-        TachePeriph[Peripherals Task <br/> Core 0 - Prio 1]:::normPrio
-        TacheEcriture[I/O Write Task <br/> Core 0 - Prio 1]:::normPrio
-        PuceLoRa[LoRa Chip SX1276]:::hwStyle
-        OLED[Integrated OLED Screen]:::hwStyle
-        
-        TacheRadio ~~~ TachePeriph
-        TacheEcriture ~~~ PuceLoRa ~~~ OLED
+    %% ── ESP32 CORE 1 ──
+    subgraph CORE1 ["⚡ ESP32 Core 1 — Radio Pipeline"]
+        ISR["setFlag ISR — IRAM_ATTR"]:::core1
+        RADIO_TASK["vRadioRxTask<br/>Prio 3 · Stack 4 Ko"]:::core1
+        SX1276["SX1276 LoRa Chip<br/>VSPI Bus"]:::hw
     end
 
-    subgraph Outputs [External Outputs]
-        CarteSD[SD Card Reader]:::hwStyle
-        LogicielPC[NectarMC PC Software]:::hwStyle
-        CarteSD ~~~ LogicielPC
+    %% ── SYNCHRONISATION ──
+    subgraph SYNC ["🔒 FreeRTOS Synchronization"]
+        SEM["rxSemaphore<br/>Binary Semaphore"]:::sync
+        QUEUE["rxQueue<br/>Packet Queue x4"]:::sync
+        MUTEX["radioMutex<br/>SPI Bus Guard"]:::sync
+        SPINLOCK["dispMux<br/>Display Vars Spinlock"]:::sync
     end
 
-    %% Flows
-    SignalLoRa -->|Triggers interrupt| TacheRadio
-    ConsolePC -->|USB/Bluetooth Input| TachePeriph
+    %% ── ESP32 CORE 0 ──
+    subgraph CORE0 ["🔧 ESP32 Core 0 — Processing Tasks"]
+        IO_TASK["vIOProcessingTask<br/>Prio 1 · Stack 8 Ko"]:::core0
+        PERIPH_TASK["vPeripheralTask<br/>Prio 1 · Stack 4 Ko"]:::core0
+    end
 
-    TacheRadio -->|Reads data| PuceLoRa
-    TacheRadio -->|Transmits via Queue| TacheEcriture
+    %% ── HARDWARE ──
+    subgraph HW ["🖥️ ESP32 LoRa32 Hardware"]
+        OLED["OLED SSD1306 128x64<br/>I2C Bus"]:::hw
+        SD["SD Card Reader<br/>HSPI Bus"]:::hw
+    end
 
-    TacheEcriture -->|Saves to| CarteSD
-    TacheEcriture -->|Sends telemetry| LogicielPC
-    
-    TachePeriph -->|Draws to| OLED
-    TachePeriph -->|Applies config| PuceLoRa
+    %% ── OUTPUTS ──
+    subgraph OUTPUTS ["📡 External Outputs"]
+        CSV["CSV Log Files"]:::output
+        NECTAR["NectarMC USB/BT<br/>Binary Protocol"]:::output
+    end
 
-    %% Security Lock
-    PuceLoRa -.->|Protected by radioMutex| TacheRadio
-    PuceLoRa -.->|Protected by radioMutex| TachePeriph
+    %% ── DATA FLOWS ──
+    ROCKET -->|"DIO0 Interrupt"| ISR
+    ISR -->|"xSemaphoreGiveFromISR"| SEM
+    SEM -->|"Wakes up task"| RADIO_TASK
+    RADIO_TASK <-->|"readData / startReceive"| SX1276
+    RADIO_TASK -->|"xQueueSend LoRaPacket"| QUEUE
+    RADIO_TASK -.->|"taskENTER_CRITICAL"| SPINLOCK
+
+    QUEUE -->|"xQueueReceive"| IO_TASK
+    IO_TASK -->|"writeFrameToFile"| SD
+    IO_TASK -->|"sendNectarFrame"| NECTAR
+    SD -->|"Saved as"| CSV
+
+    PC_CMD -->|"USB / Bluetooth SPP"| PERIPH_TASK
+    PERIPH_TASK -->|"updateDisplay"| OLED
+    PERIPH_TASK -->|"handleConfigCommand"| SX1276
+    PERIPH_TASK -.->|"taskENTER_CRITICAL"| SPINLOCK
+
+    SX1276 -.-|"radioMutex"| MUTEX
+    MUTEX -.-|"xSemaphoreTake"| RADIO_TASK
+    MUTEX -.-|"xSemaphoreTake"| PERIPH_TASK
 ```
 
 ### Mécanismes de synchronisation
 1. **Sémaphore Binaire (`rxSemaphore`)** : L'interruption DIO0 (`setFlag()`) libère le sémaphore depuis l'IRAM. La tâche `vRadioRxTask` (Prio 3, Cœur 1), en attente bloquante, se réveille instantanément pour lire la trame.
 2. **File d'Attente (`rxQueue`)** : Les paquets LoRa validés sont encapsulés dans une structure `LoRaPacket` et poussés dans la file. La tâche d'E/S les récupère sur le Cœur 0 de manière asynchrone.
 3. **Mutex Radio (`radioMutex`)** : Protège le bus SPI de la radio contre les accès concurrents lors de l'application de commandes AT à chaud (changement de fréquence, SF, BW, etc.) pendant la réception active.
+4. **Spinlock Display (`dispMux`)** : Protège les variables d'affichage partagées (`dispStatus`, `dispRssi`, `dispSnr`, etc.) entre le Cœur 1 (écriture par `RadioReceive`) et le Cœur 0 (lecture par `updateDisplay`) via des sections critiques `taskENTER_CRITICAL` / `taskEXIT_CRITICAL`.
 
 ### Description des Modules
 
