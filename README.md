@@ -211,6 +211,19 @@ graph TD
 
 ---
 
+## External Libraries
+
+Les dépendances du projet sont gérées via `platformio.ini`. 
+Les bibliothèques suivantes sont requises pour le fonctionnement du firmware :
+
+| Library | Version | Purpose |
+| :--- | :--- | :--- |
+| **RadioLib** | `^6.0.0` | Gestion de la communication radio LoRa |
+| **ESP32Time** | `^2.0.0` | Gestion de l'horloge interne (RTC) |
+| **U8g2** | `^2.34.18` | Gestion de l'affichage OLED |
+
+---
+
 ## Tests Unitaires (Stabilité des tâches & CRC)
 
 Pour prévenir les risques d'overflow de pile (*stack overflow*) inhérents au multitâche FreeRTOS et valider la logique d'intégrité, une suite de tests unitaires sous le framework **Unity** est intégrée au projet.
