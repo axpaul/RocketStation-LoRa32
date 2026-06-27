@@ -965,10 +965,12 @@ footer {
 
 /* 🚀 WASP Cockpit Styling */
 .wasp-container {
+  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
   margin-bottom: 0.5rem;
+  width: 100%;
 }
 
 .wasp-mini-stats {
