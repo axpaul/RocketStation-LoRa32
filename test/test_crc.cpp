@@ -100,6 +100,7 @@ void test_convert_adc_to_voltage() {
 // handles pour les tâches de test
 TaskHandle_t testRxTaskHandle = NULL;
 TaskHandle_t testIOTaskHandle = NULL;
+TaskHandle_t testPeriTaskHandle = NULL;
 QueueHandle_t testQueue = NULL;
 
 void dummyRxTask(void *param) {
@@ -122,14 +123,26 @@ void dummyIOTask(void *param) {
     }
 }
 
+void dummyPeriTask(void *param) {
+    for (;;) {
+        // Simulation de traitement de commandes AT (lecture, parsing, formattage de chaîne)
+        char cmd[] = "AT+FREQ=869.525";
+        float val = atof(cmd + 8);
+        char response[64];
+        snprintf(response, sizeof(response), "+FREQ: %.3f\n", val);
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
 void test_task_stacks_high_water_mark() {
     testQueue = xQueueCreate(5, sizeof(uint16_t));
     TEST_ASSERT_NOT_NULL(testQueue);
 
     // Démarrage des tâches de test avec les mêmes tailles de pile que le firmware réel
-    // 4096 octets pour RX et 8192 octets pour IO
+    // 4096 octets pour RX, 8192 octets pour IO et 4096 octets pour Peripheral
     xTaskCreatePinnedToCore(dummyRxTask, "TestRxTask", 4096, NULL, 3, &testRxTaskHandle, 1);
     xTaskCreatePinnedToCore(dummyIOTask, "TestIOTask", 8192, NULL, 1, &testIOTaskHandle, 0);
+    xTaskCreatePinnedToCore(dummyPeriTask, "TestPeriTask", 4096, NULL, 1, &testPeriTaskHandle, 0);
 
     // Laisser tourner les tâches un court instant
     delay(500);
@@ -137,19 +150,23 @@ void test_task_stacks_high_water_mark() {
     // Récupération de l'espace mémoire libre minimal rencontré (en mots de 32 bits = 4 octets)
     UBaseType_t rxWaterMark = uxTaskGetStackHighWaterMark(testRxTaskHandle);
     UBaseType_t ioWaterMark = uxTaskGetStackHighWaterMark(testIOTaskHandle);
+    UBaseType_t periWaterMark = uxTaskGetStackHighWaterMark(testPeriTaskHandle);
 
     // Affichage des informations de débogage sur le port série
     Serial.printf("[TEST] TestRxTask stack high water mark: %u words (%u bytes free)\n", rxWaterMark, rxWaterMark * 4);
     Serial.printf("[TEST] TestIOTask stack high water mark: %u words (%u bytes free)\n", ioWaterMark, ioWaterMark * 4);
+    Serial.printf("[TEST] TestPeriTask stack high water mark: %u words (%u bytes free)\n", periWaterMark, periWaterMark * 4);
 
     // Nettoyage impératif avant les assertions pour éviter les fuites ou blocages en cas d'échec
     vTaskDelete(testRxTaskHandle);
     vTaskDelete(testIOTaskHandle);
+    vTaskDelete(testPeriTaskHandle);
     vQueueDelete(testQueue);
 
-    // Vérification qu'il reste au moins 10% d'espace libre de sécurité (400 octets pour RX, 800 octets pour IO)
+    // Vérification qu'il reste au moins 10% d'espace libre de sécurité (400 octets pour RX, 800 octets pour IO, 400 octets pour Peripheral)
     TEST_ASSERT_TRUE_MESSAGE(rxWaterMark * 4 > 400, "TestRxTask stack is critically low!");
     TEST_ASSERT_TRUE_MESSAGE(ioWaterMark * 4 > 800, "TestIOTask stack is critically low!");
+    TEST_ASSERT_TRUE_MESSAGE(periWaterMark * 4 > 400, "TestPeriTask stack is critically low!");
 }
 
 void setup() {

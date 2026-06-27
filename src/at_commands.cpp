@@ -224,6 +224,9 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
     if (xIOProcessingTaskHandle != NULL) {
       responseStream.printf("IOProcessingTask Stack Free: %u B\n", uxTaskGetStackHighWaterMark(xIOProcessingTaskHandle) * 4);
     }
+    if (xPeripheralTaskHandle != NULL) {
+      responseStream.printf("PeripheralTask Stack Free: %u B\n", uxTaskGetStackHighWaterMark(xPeripheralTaskHandle) * 4);
+    }
     responseStream.println("-----------------------------------");
     responseStream.println("OK");
   }

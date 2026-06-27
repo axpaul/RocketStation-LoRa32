@@ -32,6 +32,7 @@ LoRaConfig activeConfig;
 // Descripteurs de tâches FreeRTOS pour surveillance
 TaskHandle_t xRadioRxTaskHandle = NULL;
 TaskHandle_t xIOProcessingTaskHandle = NULL;
+TaskHandle_t xPeripheralTaskHandle = NULL;
 
 /**
  * @brief Initialisation matérielle et logicielle du système.
@@ -130,6 +131,17 @@ void setup() {
     0                       /* Épinglé sur le Cœur 0 */
   );
 
+  // Tâche périphérique (OLED, AT, Batterie) : Priorité normale, sur le cœur 0
+  xTaskCreatePinnedToCore(
+    vPeripheralTask,        /* Fonction de la tâche */
+    "PeripheralTask",       /* Nom de la tâche */
+    4096,                   /* Taille de pile (4 Ko) */
+    NULL,                   /* Paramètre d'entrée */
+    1,                      /* Priorité normale */
+    &xPeripheralTaskHandle, /* Descripteur de tâche */
+    0                       /* Épinglé sur le Cœur 0 */
+  );
+
   Serial.println("[SYSTEM] FreeRTOS Multitasking initialized successfully!");
 
   // Premier affichage immédiat des données et du statut de l'écran
@@ -141,25 +153,9 @@ void setup() {
  * Gère l'OLED, le diagnostic AT et les mesures secondaires.
  */
 void loop() {
-  // Scruter et traiter les commandes AT provenant de l'USB et du Bluetooth
-  checkSerialCommands(&radio);
-
-  // Mettre à jour l'horloge ou le contenu de l'écran de manière asynchrone non bloquante
-  static unsigned long lastUpdate = 0;
-  static unsigned long lastDisplayRefresh = 0;
-  if (millis() - lastUpdate >= 1000) {
-    lastUpdate = millis();
-    lastDisplayRefresh = millis();
-    updateDisplay(u8g2, &radio);
-    displayNeedsUpdate = false;
-  } else if (displayNeedsUpdate && (millis() - lastDisplayRefresh >= 250)) {
-    lastDisplayRefresh = millis();
-    updateDisplay(u8g2, &radio);
-    displayNeedsUpdate = false;
-  }
-
-  // Laisser du temps aux tâches FreeRTOS de priorité égale ou inférieure
-  delay(10);
+  // Le Cœur 1 ne fait rien d'autre que d'attendre la radio.
+  // loop() est mis en sommeil perpétuel.
+  vTaskDelay(portMAX_DELAY);
 }
 
 /**
@@ -241,6 +237,36 @@ void vIOProcessingTask(void *pvParameters) {
         writeFrameToFile(logFileName, packet.data, packet.length, (float)packet.rssi, (float)packet.snr / 4.0f, ssid_str, packet.apid);
       }
     }
+  }
+}
+
+/**
+ * @brief Tâche de gestion des périphériques (Cœur 0).
+ * Scrute les commandes AT, rafraîchit l'OLED périodiquement.
+ */
+void vPeripheralTask(void *pvParameters) {
+  (void)pvParameters;
+  
+  static unsigned long lastUpdate = 0;
+  static unsigned long lastDisplayRefresh = 0;
+  
+  for (;;) {
+    // Scruter et traiter les commandes AT provenant de l'USB et du Bluetooth
+    checkSerialCommands(&radio);
+
+    // Mettre à jour l'horloge ou le contenu de l'écran de manière asynchrone
+    if (millis() - lastUpdate >= 1000) {
+      lastUpdate = millis();
+      lastDisplayRefresh = millis();
+      updateDisplay(u8g2, &radio);
+      displayNeedsUpdate = false;
+    } else if (displayNeedsUpdate && (millis() - lastDisplayRefresh >= 250)) {
+      lastDisplayRefresh = millis();
+      updateDisplay(u8g2, &radio);
+      displayNeedsUpdate = false;
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(50)); // Attente de 50 ms pour relâcher le CPU
   }
 }
 #endif

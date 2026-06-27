@@ -129,6 +129,7 @@ extern SemaphoreHandle_t radioMutex;
 extern QueueHandle_t rxQueue;
 extern TaskHandle_t xRadioRxTaskHandle;
 extern TaskHandle_t xIOProcessingTaskHandle;
+extern TaskHandle_t xPeripheralTaskHandle;
 
 // Variables de statistiques partagées pour l'affichage
 extern unsigned long lastTrackerPacketTime[256];
@@ -172,5 +173,6 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
 // Tâches FreeRTOS (Dual-Core)
 void vRadioRxTask(void *pvParameters);
 void vIOProcessingTask(void *pvParameters);
+void vPeripheralTask(void *pvParameters);
 
 #endif // HEADER_H
