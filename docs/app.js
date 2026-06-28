@@ -549,6 +549,59 @@ function bytesToHex(bytes) {
     .join('');
 }
 
+function getFriendlyPortName(portInfo) {
+  const vid = portInfo.usbVendorId;
+  const pid = portInfo.usbProductId;
+  
+  if (vid === undefined || pid === undefined) {
+    return currentLang === 'en' ? "Unknown Serial Device" : "Appareil Série Inconnu";
+  }
+  
+  const hexVid = `0x${vid.toString(16).toUpperCase().padStart(4, '0')}`;
+  const hexPid = `0x${pid.toString(16).toUpperCase().padStart(4, '0')}`;
+  
+  const chipsets = {
+    "0x10C4": {
+      name: "Silicon Labs CP210x (USB-to-UART Bridge)",
+      pids: { "0xEA60": "CP2102/CP2109" }
+    },
+    "0x1A86": {
+      name: "WCH CH340/CH341 (USB-to-Serial)",
+      pids: { "0x7523": "CH340" }
+    },
+    "0x0403": {
+      name: "FTDI USB Serial",
+      pids: { "0x6001": "FT232R" }
+    },
+    "0x067B": {
+      name: "Prolific PL2303",
+      pids: { "0x2303": "PL2303 TA" }
+    },
+    "0x2341": {
+      name: "Arduino",
+      pids: {
+        "0x0043": "Uno R3",
+        "0x0001": "Uno",
+        "0x0042": "Mega 2560 R3"
+      }
+    },
+    "0x303A": {
+      name: "Espressif USB-JTAG-Serial",
+      pids: {
+        "0x1001": "ESP32-S3/C3 USB"
+      }
+    }
+  };
+  
+  const chipset = chipsets[hexVid];
+  if (chipset) {
+    const specificModel = chipset.pids[hexPid] || "";
+    return `${chipset.name}${specificModel ? ` (${specificModel})` : ''} [VID: ${hexVid}, PID: ${hexPid}]`;
+  }
+  
+  return `USB Device [VID: ${hexVid}, PID: ${hexPid}]`;
+}
+
 // ============================================================================
 // API Web Serial - Connexion et Lecture
 // ============================================================================
@@ -562,7 +615,7 @@ async function connectSerial() {
       await port.open({ baudRate: baud });
       
       const portInfo = port.getInfo();
-      const portName = `USB Vendor 0x${(portInfo.usbVendorId || 0).toString(16)} Product 0x${(portInfo.usbProductId || 0).toString(16)}`;
+      const portName = getFriendlyPortName(portInfo);
       
       updateConnectionUI(true, portName);
       logToTerminal(getTranslation('log_conn_success'), 'sys-out');
