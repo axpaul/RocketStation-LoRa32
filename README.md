@@ -2,7 +2,7 @@
 
 **NECTAR RX STATION - LoRa32** est la station au sol de réception LoRa officielle de l'écosystème **Nectar**, destinée à capter la télémétrie de fusées expérimentales et de ballons-sondes. Elle repose sur la carte de développement [LilyGO TTGO T3 V1.6.1 (LoRa32 V2.1.6)](https://lilygo.cc/en-us/products/lora3) équipée d'un microcontrôleur ESP32, d'un module radio SX1276 et d'un écran OLED intégré. Elle fonctionne à la fréquence de 869.525 MHz (868 MHz ou 433 Mhz Bande ICM en fonction de la version).
 
-Elle est notamment pleinement compatible avec le tracker d'émission officiel de l'écosystème : [Wasp-TxTracker-TTGO](https://github.com/axpaul/Wasp-TxTracker-TTGO), ainsi qu'avec le logiciel de visualisation et de traitement de télémétrie au sol [NectarMC](https://github.com/mlavardin/NectarMC).
+Elle est notamment pleinement compatible avec le tracker : [Wasp-TxTracker-TTGO](https://github.com/axpaul/Wasp-TxTracker-TTGO), ainsi qu'avec le logiciel de visualisation et de traitement de télémétrie au sol [NectarMC](https://github.com/mlavardin/NectarMC).
 
 <p align="center">
   <img src="Image/DSC03016.JPG" alt="Station sol TTGO LoRa32 affichant NECTAR" width="800" />
