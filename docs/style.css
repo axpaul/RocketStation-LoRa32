@@ -1101,20 +1101,20 @@ footer {
   }
 }
 
-/* Micro-animation de pulsation de couleur et lueur du marqueur Leaflet lors de la réception */
-@keyframes wasp-pulse {
+/* Micro-animation de pulsation (pulse/glow) pour le marqueur Leaflet */
+@keyframes wasp-marker-pulse-anim {
   0% {
-    filter: drop-shadow(0 0 0px rgba(16, 185, 129, 0));
+    filter: none;
   }
-  20% {
-    /* Tourne la couleur du marqueur en vert néon saturé et ajoute un halo lumineux */
-    filter: hue-rotate(140deg) saturate(6) brightness(1.4) drop-shadow(0 0 8px #10b981);
+  15% {
+    /* Virage de couleur vers le vert néon + double ombre portée lumineuse */
+    filter: hue-rotate(140deg) brightness(1.4) saturate(1.6) drop-shadow(0 0 8px #10b981) drop-shadow(0 0 15px #10b981);
   }
   100% {
-    filter: drop-shadow(0 0 0px rgba(16, 185, 129, 0));
+    filter: none;
   }
 }
 
-.wasp-marker-pulse {
-  animation: wasp-pulse 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+.wasp-pulse {
+  animation: wasp-marker-pulse-anim 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
