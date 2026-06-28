@@ -297,36 +297,36 @@
           <h2 data-i18n="wasp_title" style="border-bottom: none; padding-bottom: 0; margin-bottom: 0;">🚀 Télémétrie Wasp Décryptée</h2>
           <div style="display: flex; align-items: center; gap: 0.5rem;">
             <select id="select-wasp-tracker" style="padding: 0.3rem 0.6rem; font-size: 0.85rem; background: var(--bg-deep); border: 1px solid var(--bg-card-border); color: var(--text-main); border-radius: 4px; outline: none; cursor: pointer; font-family: var(--font-sans); font-weight: 600;">
-              <option value="" disabled selected>Attente émetteur...</option>
+              <option value="" disabled selected data-i18n="wasp_waiting_tracker">Attente émetteur...</option>
             </select>
-            <button id="btn-recenter-wasp" class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; height: auto;" title="Recentrer la carte sur le tracker actif">🎯</button>
+            <button id="btn-recenter-wasp" class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; height: auto;" data-i18n-title="wasp_recenter_title" title="Recentrer la carte sur le tracker actif">🎯</button>
           </div>
         </div>
         <div class="card-content" style="padding-top: 0.5rem;">
           <div class="wasp-mini-stats">
             <div class="wasp-stat-box">
               <span class="wasp-stat-val" id="wasp-alt">--</span>
-              <span class="wasp-stat-lbl">ALTITUDE (M)</span>
+              <span class="wasp-stat-lbl" data-i18n="wasp_alt">ALTITUDE (M)</span>
             </div>
             <div class="wasp-stat-box">
               <span class="wasp-stat-val" id="wasp-spd">--</span>
-              <span class="wasp-stat-lbl">VITESSE (KM/H)</span>
+              <span class="wasp-stat-lbl" data-i18n="wasp_spd">VITESSE (KM/H)</span>
             </div>
             <div class="wasp-stat-box">
               <span class="wasp-stat-val" id="wasp-sats">--</span>
-              <span class="wasp-stat-lbl">SATELLITES</span>
+              <span class="wasp-stat-lbl" data-i18n="wasp_sats">SATELLITES</span>
             </div>
             <div class="wasp-stat-box">
               <span class="wasp-stat-val" id="wasp-temp">--</span>
-              <span class="wasp-stat-lbl">TEMPÉRATURE (°C)</span>
+              <span class="wasp-stat-lbl" data-i18n="wasp_temp">TEMPÉRATURE (°C)</span>
             </div>
             <div class="wasp-stat-box">
               <span class="wasp-stat-val" id="wasp-vbat">--</span>
-              <span class="wasp-stat-lbl">BATTERIE (V)</span>
+              <span class="wasp-stat-lbl" data-i18n="wasp_vbat">BATTERIE (V)</span>
             </div>
             <div class="wasp-stat-box">
               <span class="wasp-stat-val" id="wasp-signal">--</span>
-              <span class="wasp-stat-lbl">RSSI / SNR</span>
+              <span class="wasp-stat-lbl" data-i18n="wasp_signal">RSSI / SNR</span>
             </div>
           </div>
         </div>
@@ -433,6 +433,6 @@
     <p>&copy; 2026 Nectar Project - <span data-i18n="footer_credit">Conçu et développé par</span> <a href="https://github.com/axpaul" target="_blank" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">Paul Miailhe (axpaul)</a> | <a href="https://github.com/axpaul/Nectar-RxStation-LoRa32" target="_blank" style="color: var(--color-cyan); text-decoration: none; font-weight: 600; margin: 0 5px;">GitHub</a> | <a href="https://github.com/mlavardin/NectarMC" target="_blank" style="color: var(--color-accent); text-decoration: none; font-weight: 600; margin-left: 5px;">NectarMC</a></p>
   </footer>
 
-  <script type="module" src="app.js?v=1.6.2-wasp-debug"></script>
+  <script type="module" src="app.js?v=1.6.3-i18n-patch"></script>
 </body>
 </html>
