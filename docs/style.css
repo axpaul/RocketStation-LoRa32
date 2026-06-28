@@ -1101,25 +1101,20 @@ footer {
   }
 }
 
-/* Micro-animation de rebond (bounce) du marqueur Leaflet lors de la réception */
-@keyframes wasp-bounce {
+/* Micro-animation de pulsation de couleur et lueur du marqueur Leaflet lors de la réception */
+@keyframes wasp-pulse {
   0% {
-    margin-top: 0;
+    filter: drop-shadow(0 0 0px rgba(16, 185, 129, 0));
   }
-  30% {
-    margin-top: -15px; /* Sursaut */
-  }
-  50% {
-    margin-top: 0;
-  }
-  75% {
-    margin-top: -5px; /* Amorti */
+  20% {
+    /* Tourne la couleur du marqueur en vert néon saturé et ajoute un halo lumineux */
+    filter: hue-rotate(140deg) saturate(6) brightness(1.4) drop-shadow(0 0 8px #10b981);
   }
   100% {
-    margin-top: 0;
+    filter: drop-shadow(0 0 0px rgba(16, 185, 129, 0));
   }
 }
 
-.wasp-marker-bounce {
-  animation: wasp-bounce 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+.wasp-marker-pulse {
+  animation: wasp-pulse 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
