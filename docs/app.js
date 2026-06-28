@@ -1169,6 +1169,15 @@ function decodeNectarFrame(frame) {
             waspMarkers[trackerName].setLatLng(pos);
             waspMarkers[trackerName].setPopupContent(popupText);
           }
+
+          // Déclencher la micro-animation de rebond (bounce) sur l'icône du marqueur
+          if (waspMarkers[trackerName] && waspMarkers[trackerName]._icon) {
+            const iconEl = waspMarkers[trackerName]._icon;
+            iconEl.classList.remove('wasp-marker-bounce');
+            // Forcer un reflow du navigateur pour réinitialiser l'animation CSS
+            void iconEl.offsetWidth; 
+            iconEl.classList.add('wasp-marker-bounce');
+          }
           
           // 3. Recentrage intelligent : uniquement si c'est la toute première coordonnée reçue
           // ou si aucun recentrage n'avait été fait au préalable (waspLastPos était nul)
