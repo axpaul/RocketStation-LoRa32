@@ -153,6 +153,10 @@ Les commandes peuvent être envoyées via la **liaison série USB** (115200 baud
 *   **Rôle** : Renvoie simultanément le RSSI et le SNR du dernier paquet.
 *   **Format de réponse** : `+SIG: RSSI=<rssi>,SNR=<snr>` suivi de `OK`.
 
+### `AT+ERR?`
+*   **Rôle** : Renvoie le nombre cumulé de paquets rejetés pour cause de trame non valide (ex: échec du contrôle CRC, taille trop courte, ou corruption en vol).
+*   **Format de réponse** : `+ERR: <nombre_erreurs>` (ex: `+ERR: 14`) suivi de `OK`.
+
 ---
 
 ## 5. Gestion des Erreurs

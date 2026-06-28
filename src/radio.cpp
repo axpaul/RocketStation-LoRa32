@@ -22,7 +22,7 @@ QueueHandle_t rxQueue = NULL;
 // Métadonnées de la dernière trame pour l'affichage OLED
 char dispStatus[32] = "RX:0";
 static uint32_t rxCount = 0;
-static uint32_t errCount = 0;
+uint32_t errCount = 0;
 char dispSsidApid[32] = "No Frame";
 float dispRssi = 0.0;
 float dispSnr = 0.0;

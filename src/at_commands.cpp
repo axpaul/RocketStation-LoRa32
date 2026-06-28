@@ -133,6 +133,12 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
     responseStream.println("OK");
   }
 
+  // AT+ERR?
+  else if (strcmp(cmd, "AT+ERR?") == 0) {
+    responseStream.printf("+ERR: %lu\n", (unsigned long)errCount);
+    responseStream.println("OK");
+  }
+
   // AT+SF=<6-12> ou AT+SF?
   else if (strncmp(cmd, "AT+SF=", 6) == 0) {
     int val = atoi(cmd + 6);
@@ -278,6 +284,7 @@ void handleConfigCommand(const char* cmd, Stream& responseStream, SX1276 *radio)
     responseStream.println("AT+RSSI?       : Get last received packet RSSI");
     responseStream.println("AT+SNR?        : Get last received packet SNR");
     responseStream.println("AT+SIG?        : Get RSSI and SNR of last packet");
+    responseStream.println("AT+ERR?        : Get invalid/corrupted packet count");
     responseStream.println("AT+CFG         : Get detailed configuration");
     responseStream.println("AT+LIST        : List CSV log files on SD card");
     responseStream.println("AT+DUMP=<file> : Dump CSV log file contents");

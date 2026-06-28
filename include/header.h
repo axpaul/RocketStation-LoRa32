@@ -136,6 +136,7 @@ extern TaskHandle_t xPeripheralTaskHandle;
 // Variables de statistiques partagées pour l'affichage
 extern unsigned long lastTrackerPacketTime[256];
 extern uint32_t bytesReceivedThisSecond;
+extern uint32_t errCount;
 
 // ============================================================================
 // Prototypes de fonctions
