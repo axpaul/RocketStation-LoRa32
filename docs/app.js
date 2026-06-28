@@ -105,6 +105,14 @@ const i18n = {
     conn_voice_alerts: "🎙️ Synthèse Vocale (Alertes Tracker)",
     conn_wasp_decoding: "🐝 Activer décodeur WASP (32B)",
     wasp_title: "🚀 Télémétrie Wasp Décryptée",
+    wasp_waiting_tracker: "Attente émetteur...",
+    wasp_recenter_title: "Recentrer la carte sur le tracker actif",
+    wasp_alt: "ALTITUDE (M)",
+    wasp_spd: "VITESSE (KM/H)",
+    wasp_sats: "SATELLITES",
+    wasp_temp: "TEMPÉRATURE (°C)",
+    wasp_vbat: "BATTERIE (V)",
+    wasp_signal: "RSSI / SNR",
     wasp_map_title: "🗺️ Position GPS Live",
     config_title: "⚙️ Paramètres Radio",
     config_frequency: "Fréquence (MHz) :",
@@ -249,6 +257,14 @@ const i18n = {
     conn_voice_alerts: "🎙️ Voice Synthesis (Tracker Alerts)",
     conn_wasp_decoding: "🐝 Enable WASP Decoder (32B)",
     wasp_title: "🚀 Decrypted Wasp Telemetry",
+    wasp_waiting_tracker: "Waiting for transmitter...",
+    wasp_recenter_title: "Recenter map on active tracker",
+    wasp_alt: "ALTITUDE (M)",
+    wasp_spd: "SPEED (KM/H)",
+    wasp_sats: "SATELLITES",
+    wasp_temp: "TEMPERATURE (°C)",
+    wasp_vbat: "BATTERY (V)",
+    wasp_signal: "RSSI / SNR",
     wasp_map_title: "🗺️ Live GPS Position",
     config_title: "⚙️ Radio Settings",
     config_frequency: "Frequency (MHz):",
@@ -375,6 +391,14 @@ function setLanguage(lang) {
     const key = el.getAttribute('data-i18n-placeholder');
     if (i18n[lang] && i18n[lang][key]) {
       el.placeholder = i18n[lang][key];
+    }
+  });
+
+  // Mettre à jour les attributs title
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    if (i18n[lang] && i18n[lang][key]) {
+      el.title = i18n[lang][key];
     }
   });
 
