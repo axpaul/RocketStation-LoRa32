@@ -1173,10 +1173,10 @@ function decodeNectarFrame(frame) {
           // Déclencher la micro-animation de pulsation (pulse/glow) sur l'icône du marqueur
           if (waspMarkers[trackerName] && waspMarkers[trackerName]._icon) {
             const iconEl = waspMarkers[trackerName]._icon;
-            iconEl.classList.remove('wasp-marker-pulse');
+            iconEl.classList.remove('wasp-pulse');
             // Forcer un reflow du navigateur pour réinitialiser l'animation CSS
             void iconEl.offsetWidth; 
-            iconEl.classList.add('wasp-marker-pulse');
+            iconEl.classList.add('wasp-pulse');
           }
           
           // 3. Recentrage intelligent : uniquement si c'est la toute première coordonnée reçue
