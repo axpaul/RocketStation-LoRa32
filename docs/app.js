@@ -987,8 +987,16 @@ function decodeNectarFrame(frame) {
 
   // Décodage optionnel de la charge utile WASP (29 octets + 3 octets de header NectarMC = 32 octets au total)
   const chkWaspDecoding = document.getElementById('chk-wasp-decoding');
+  
+  // Log de debug systématique dans la console du terminal
+  if (payloadSize === 29) {
+    const isChecked = chkWaspDecoding ? chkWaspDecoding.checked : false;
+    logToTerminal(`🔍 Détection trame 29B de ${trackerName}. Case décodeur WASP cochée : ${isChecked}`, "sys-out");
+  }
+  
   if (chkWaspDecoding && chkWaspDecoding.checked && payloadSize === 29) {
     try {
+      logToTerminal(`🚀 Début décodage WASP pour ${trackerName}...`, "sys-out");
       const buffer = new ArrayBuffer(29);
       const view = new DataView(buffer);
       for (let i = 0; i < 29; i++) {
@@ -1011,6 +1019,8 @@ function decodeNectarFrame(frame) {
       
       const gpsFix = (waspStatus & 0x80) !== 0;
       const numSats = waspStatus & 0x1F;
+      
+      logToTerminal(`✅ Décrypté : Lat=${waspLat.toFixed(4)}, Lon=${waspLon.toFixed(4)}, Alt=${waspAlt.toFixed(1)}m, Fix=${gpsFix}, Sats=${numSats}`, "sys-out");
       
       const isNewWaspTracker = !waspTrackersData[trackerName];
       
