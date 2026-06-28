@@ -209,10 +209,14 @@ void updateDisplay(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2, SX1276* radio) {
     dispMode = (dispMode + 1) % 2;
   }
 
-  // Calcul du débit de données instantané toutes les secondes
+  // Calcul du débit de données instantané toutes les secondes avec accumulateur
+  static uint32_t accumulatedBytes = 0;
+  accumulatedBytes += localBytesReceived;
+
   unsigned long elapsed = millis() - lastRateCalculation;
   if (elapsed >= 1000) {
-    dataRateBps = (localBytesReceived * 1000) / elapsed;
+    dataRateBps = (accumulatedBytes * 1000) / elapsed;
+    accumulatedBytes = 0;
     lastRateCalculation = millis();
   }
 
