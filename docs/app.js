@@ -1161,6 +1161,7 @@ function decodeNectarFrame(frame) {
       }
     } catch (e) {
       console.error("Erreur de décodage de la charge utile WASP:", e);
+      logToTerminal("⚠️ Erreur Décodeur WASP : " + e.message + " | " + e.stack.split('\n')[0], "sys-out");
     }
   }
 
