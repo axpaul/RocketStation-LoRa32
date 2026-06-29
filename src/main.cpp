@@ -174,7 +174,7 @@ void vRadioRxTask(void *pvParameters) {
     } else {
       // Timeout expiré : interroger la radio par SPI au cas où la broche DIO0 serait déconnectée
       if (xSemaphoreTake(radioMutex, 0) == pdTRUE) {
-        if (radio.checkIrq(RADIOLIB_IRQ_RX_DONE)) {
+        if (radio.getIRQFlags() & RADIOLIB_SX127X_CLEAR_IRQ_FLAG_RX_DONE) {
           packetPending = true;
           Serial.println("[WARNING] DIO0 interrupt missed! Packet recovered via SPI polling.");
         }
