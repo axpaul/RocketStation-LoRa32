@@ -81,6 +81,8 @@ Pour garantir la fiabilité de la transmission des données de la fusée jusqu'�
 1. **Liaison Radio LoRa (Tracker ➔ Station Sol)** : CRC matériel géré en silicium par le SX1276 (Option A, par défaut), ou CRC logiciel inséré dans la payload LoRa et validé en C++ par la station sol (Option B).
 2. **Liaison Série & Bluetooth (Station Sol ➔ PC)** : CRC logiciel calculé par l'ESP32 et vérifié à la réception par le PC (NectarMC ou Dashboard Web).
 
+3. **Tolérance aux pannes matérielles (Radio Watchdog)** : Si la broche d'interruption physique **DIO0** du SX1276 est coupée, dessoudée ou défectueuse, la tâche radio bascule automatiquement sur un mode de secours par scrutation SPI (polling) toutes le 2 secondes afin de récupérer les trames de télémétrie en cours sans aucune perte de paquet.
+
 Pour une explication détaillée de ces deux niveaux de sécurité et un guide pas-à-pas idéal pour les débutants :
 👉 **[Consulter le Guide complet sur les CRC](./CRC_GUIDE.md)**
 
@@ -154,7 +156,7 @@ graph TD
 ```
 
 ### Mécanismes de synchronisation
-1. **Sémaphore Binaire (`rxSemaphore`)** : L'interruption DIO0 (`setFlag()`) libère le sémaphore depuis l'IRAM. La tâche `vRadioRxTask` (Prio 3, Cœur 1), en attente bloquante, se réveille instantanément pour lire la trame.
+1. **Sémaphore Binaire (`rxSemaphore`)** : L'interruption DIO0 (`setFlag()`) libère le sémaphore depuis l'IRAM. La tâche `vRadioRxTask` (Prio 3, Cœur 1) attend ce sémaphore. Si aucun signal n'est reçu sous 2 secondes (timeout), la tâche interroge directement la radio par SPI (`checkIrq(RADIOLIB_IRQ_RX_DONE)`) afin de parer à une défaillance de la broche physique DIO0 (Failsafe par scrutation).
 2. **File d'Attente (`rxQueue`)** : Les paquets LoRa validés sont encapsulés dans une structure `LoRaPacket` et poussés dans la file. La tâche d'E/S les récupère sur le Cœur 0 de manière asynchrone.
 3. **Mutex Radio (`radioMutex`)** : Protège le bus SPI de la radio contre les accès concurrents lors de l'application de commandes AT à chaud (changement de fréquence, SF, BW, etc.) pendant la réception active.
 4. **Spinlock Display (`dispMux`)** : Protège les variables d'affichage partagées (`dispStatus`, `dispRssi`, `dispSnr`, etc.) entre le Cœur 1 (écriture par `RadioReceive`) et le Cœur 0 (lecture par `updateDisplay`) via des sections critiques `taskENTER_CRITICAL` / `taskEXIT_CRITICAL`.

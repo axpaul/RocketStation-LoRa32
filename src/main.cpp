@@ -167,8 +167,22 @@ void vRadioRxTask(void *pvParameters) {
   uint8_t rxBuffer[MAX_FRAME_SIZE];
 
   for (;;) {
-    // Attendre le signal d'interruption LoRa (DIO0)
-    if (xSemaphoreTake(rxSemaphore, portMAX_DELAY) == pdTRUE) {
+    // Attendre le signal d'interruption LoRa (DIO0) avec un timeout de 2 secondes
+    bool packetPending = false;
+    if (xSemaphoreTake(rxSemaphore, pdMS_TO_TICKS(2000)) == pdTRUE) {
+      packetPending = true;
+    } else {
+      // Timeout expiré : interroger la radio par SPI au cas où la broche DIO0 serait déconnectée
+      if (xSemaphoreTake(radioMutex, 0) == pdTRUE) {
+        if (radio.checkIrq(RADIOLIB_IRQ_RX_DONE)) {
+          packetPending = true;
+          Serial.println("[WARNING] DIO0 interrupt missed! Packet recovered via SPI polling.");
+        }
+        xSemaphoreGive(radioMutex);
+      }
+    }
+
+    if (packetPending) {
       size_t len = 0;
       int8_t rssi_val = 0;
       int8_t snr_val = 0;
