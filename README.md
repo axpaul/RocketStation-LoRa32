@@ -81,10 +81,16 @@ Pour garantir la fiabilité de la transmission des données de la fusée jusqu'�
 1. **Liaison Radio LoRa (Tracker ➔ Station Sol)** : CRC matériel géré en silicium par le SX1276 (Option A, par défaut), ou CRC logiciel inséré dans la payload LoRa et validé en C++ par la station sol (Option B).
 2. **Liaison Série & Bluetooth (Station Sol ➔ PC)** : CRC logiciel calculé par l'ESP32 et vérifié à la réception par le PC (NectarMC ou Dashboard Web).
 
-3. **Tolérance aux pannes matérielles (Radio Watchdog)** : Si la broche d'interruption physique **DIO0** du SX1276 est coupée, dessoudée ou défectueuse, la tâche radio bascule automatiquement sur un mode de secours par scrutation SPI (polling) toutes le 2 secondes afin de récupérer les trames de télémétrie en cours sans aucune perte de paquet.
-
 Pour une explication détaillée de ces deux niveaux de sécurité et un guide pas-à-pas idéal pour les débutants :
 👉 **[Consulter le Guide complet sur les CRC](./CRC_GUIDE.md)**
+
+### 🛡️ Gestion des Interruptions LoRa & Watchdog Failsafe
+
+Les firmwares de l'écosystème exploitent les interruptions matérielles sur la broche **DIO0** du SX1276 (signalant la fin d'une réception RX ou d'une émission TX) à l'aide de sémaphores FreeRTOS configurés avec un timeout de **2 secondes**. Leurs comportements de secours (*failsafe*) sont optimisés pour leurs rôles respectifs :
+
+1. **Failsafe par Polling SPI (RocketStation Nectar - Récepteur)** : L'objectif de la station au sol est de ne perdre aucune trame de télémétrie en vol. Si la broche physique DIO0 subit une défaillance (soudure défectueuse, bruit parasite), la tâche RX bascule automatiquement après 2 secondes sur une scrutation active du registre radio par bus SPI (`radio.checkIrq(RADIOLIB_IRQ_RX_DONE)`). Si un paquet a été reçu, il est décodé et récupéré de force.
+2. **Watchdog Thermique & Énergétique (Wasp-TX - Émetteur)** : Sur l'émetteur embarqué, la priorité est de protéger le matériel et l'autonomie. En émission LoRa, l'amplificateur RF consomme beaucoup de courant (~120 mA). Si le signal de fin d'émission sur DIO0 est manqué, le module risquerait de rester bloqué en émission continue et de surchauffer. Après 2 secondes sans interruption, le watchdog de Wasp-TX force la radio en mode veille (`radio.standby()`) pour couper l'étage de puissance RF.
+
 
 ## Commandes de Configuration AT (Série / Bluetooth)
 
